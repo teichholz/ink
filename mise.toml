@@ -1,0 +1,17 @@
+[tools]
+pre-commit = "latest"
+
+[tasks.run]
+description = "Run"
+run = "tsc && dist/cli.js"
+
+[tasks.test]
+description = "Run tests"
+run = "npx vitest"
+
+[hooks]
+postinstall = "pre-commit install-hooks"
+
+[env]
+_.file = ".env.json"
+PATH = "node_modules/.bin"
