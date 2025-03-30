@@ -10,16 +10,6 @@ export function useComponentHeight(offsetHeight = 0) {
 	const [height, setHeight] = useState(0);
 	const ref = useRef<DOMElement | null>(null);
 
-	// Create a callback ref that will measure the element when it's attached
-	const measuredRef = (element: DOMElement | null) => {
-		ref.current = element;
-		
-		if (element) {
-			const {height} = measureElement(element);
-			setHeight(Math.max(0, height - offsetHeight));
-		}
-	};
-
 	// Re-measure when offsetHeight changes
 	useEffect(() => {
 		if (ref.current) {
@@ -29,7 +19,7 @@ export function useComponentHeight(offsetHeight = 0) {
 	}, [offsetHeight]);
 
 	return {
-		ref: measuredRef,
+		ref,
 		height,
 	};
 }
