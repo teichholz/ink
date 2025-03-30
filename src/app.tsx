@@ -228,11 +228,25 @@ function AppContent({tools, config}: Props) {
 	};
 
 	// Get active keybindings
-	const { getActiveKeybindings, activeComponentId } = useActiveKeybindings();
+	const activeKeybindingsContext = useActiveKeybindings();
+	const { getActiveKeybindings, activeComponentId } = activeKeybindingsContext;
 	const activeKeybindings = getActiveKeybindings();
+	
+	// Debug the context
+	useEffect(() => {
+		logger.debug({
+			activeComponentId,
+			hasKeybindings: activeKeybindings.length > 0,
+			contextKeys: Object.keys(activeKeybindingsContext)
+		}, 'Active keybindings context');
+	}, [activeComponentId, activeKeybindings.length]);
 
 	// Format keybindings for display
 	const formatKeyBinding = (binding: any) => {
+		if (!binding || !binding.key) {
+			return '';
+		}
+		
 		const { key, label } = binding;
 		const modifiers = key.modifiers || [];
 		

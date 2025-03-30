@@ -1,6 +1,7 @@
 import {useInput, useFocus, Key} from 'ink';
 import {useCallback, useMemo} from 'react';
 import chalk from 'chalk';
+import {useRegisterKeybindings} from './useActiveKeybindings.js';
 
 /**
  * Helper function to create a KeyCombo
@@ -88,7 +89,6 @@ export function useKeybindings(keybindings: Keybinding[], id: string) {
 	const {isFocused} = useFocus({id});
 	
 	// Register keybindings with the global registry
-	const { useRegisterKeybindings } = require('./useActiveKeybindings');
 	useRegisterKeybindings(id, keybindings, isFocused);
 
 	/**
