@@ -9,12 +9,31 @@ import {Config} from './config.js';
 import {currentFocusedKeybindings} from './hooks/useKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
-import {extractLabelsFromFile, File, find, Tools} from './tools.js';
+import {extractLabelsFromFile, find, Tools} from './tools.js';
 
 type Props = {
 	name: string | undefined;
 	tools: Tools;
 	config: Config;
+};
+
+type FilePath = string;
+
+export type FileInfo = {
+	/**
+	 * The file name without the language capture
+	 */
+	rootFileName: string;
+
+	/**
+	 * The full path to the files
+	 */
+	paths: Set<FilePath>;
+
+	/**
+	 * The languages of the file
+	 */
+	languages: Set<string>;
 };
 
 // Type for storing label information
@@ -33,7 +52,7 @@ export type LabelInfo = {
 	/**
 	 * The concrete files and their value for the label
 	 */
-	sources: Map<File, unknown>; // Maps file path to the label value
+	sources: Map<FilePath, unknown>; // Maps file path to the label value
 };
 
 interface Item<T> extends FilterItem {
@@ -46,7 +65,7 @@ export default function App(props: Props) {
 }
 
 function AppContent({tools, config}: Props) {
-	const [allFiles, setAllFiles] = useState<Array<Item<File>>>([]);
+	const [allFiles, setAllFiles] = useState<Array<Item<FileInfo>>>([]);
 	const [allLabels, setAllLabels] = useState<Array<Item<LabelInfo>>>([]);
 
 	// Track filtered items
@@ -63,7 +82,7 @@ function AppContent({tools, config}: Props) {
 
 	// Track selected items for preview
 	const [selectedLabel, setSelectedLabel] = useState<LabelInfo | null>(null);
-	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
 
 	const [activeKeybindings] = useAtom(currentFocusedKeybindings);
 
@@ -74,8 +93,8 @@ function AppContent({tools, config}: Props) {
 	useEffect(() => {
 		logger.info({config}, 'Starting application');
 		const loadFilesAndLabels = async () => {
-			const fileItems: Array<Item<File>> = [];
-			const seenRootFileNames = new Set<string>();
+			const fileItems: Array<Item<FileInfo>> = [];
+			const fileInfos = new Map<string, FileInfo>();
 			const labelInfoMap = new Map<string, LabelInfo>();
 
 			for await (const file of find(tools.fd, config)) {
@@ -83,13 +102,22 @@ function AppContent({tools, config}: Props) {
 
 				// Only add file once to the file list to avoid duplicates
 				// We still need to extract labels from the file
-				if (!seenRootFileNames.has(file.rootFileName)) {
-					seenRootFileNames.add(file.rootFileName);
+				const fileInfo: FileInfo = {
+					rootFileName: file.rootFileName,
+					paths: new Set([file.path]),
+					languages: new Set([file.language]),
+				};
+				if (!fileInfos.has(file.rootFileName)) {
 					fileItems.push({
-						id: file.path,
+						id: file.rootFileName,
 						name: file.rootFileName,
-						item: file,
+						item: fileInfo,
 					});
+					fileInfos.set(file.rootFileName, fileInfo);
+				} else {
+					const existingFileInfo = fileInfos.get(file.rootFileName);
+					existingFileInfo?.paths.add(file.path);
+					existingFileInfo?.languages.add(file.language);
 				}
 
 				// Extract labels from the file
@@ -130,7 +158,7 @@ function AppContent({tools, config}: Props) {
 					}
 
 					labelInfo.languages.add(file.language);
-					labelInfo.sources.set(file, value);
+					labelInfo.sources.set(file.rootFileName, value);
 				}
 			}
 
@@ -163,6 +191,8 @@ function AppContent({tools, config}: Props) {
 
 	// Filter labels based on selected files - with memoization to prevent recalculation
 	const visibleLabels = useMemo(() => {
+		logger.info({filteredFileIds}, 'Filtering labels');
+
 		if (!isFileFilterActive || filteredFileIds.size === 0) {
 			return allLabels;
 		}
@@ -170,7 +200,8 @@ function AppContent({tools, config}: Props) {
 		return allLabels.filter(label => {
 			// Check if any of the label's sources are in the filtered files
 			for (const file of label.item.sources.keys()) {
-				if (filteredFileIds.has(file.path)) {
+				logger.info({file: file, label: label}, 'Checking file');
+				if (filteredFileIds.has(file)) {
 					return true;
 				}
 			}
@@ -184,15 +215,12 @@ function AppContent({tools, config}: Props) {
 			return allFiles;
 		}
 
-		// Create a lookup map for faster checking
-		const filteredLabelIdsSet = filteredLabelIds;
-
 		return allFiles.filter(file => {
 			// Check if this file contains any of the filtered labels
 			return allLabels.some(
 				label =>
-					filteredLabelIdsSet.has(label.id) &&
-					label.item.sources.has(file.item),
+					filteredLabelIds.has(label.id) &&
+					label.item.sources.has(file.item.rootFileName),
 			);
 		});
 	}, [allFiles, allLabels, filteredLabelIds, isLabelFilterActive]);
@@ -205,30 +233,17 @@ function AppContent({tools, config}: Props) {
 		const newFilteredIds = new Set(filteredItems.map(item => item.id));
 		setFilteredLabelIds(newFilteredIds);
 		setIsLabelFilterActive(isActive);
-		logger.debug(
-			{
-				filteredLabelCount: newFilteredIds.size,
-				isActive,
-			},
-			'Label filter changed',
-		);
 	};
 
 	// Handle file filter changes
 	const handleFileFilterChange = (
-		filteredItems: Array<{id: string}>,
+		filteredItems: Array<Item<FileInfo>>,
 		isActive: boolean,
 	) => {
-		const newFilteredIds = new Set(filteredItems.map(item => item.id));
+		logger.info({filteredItems}, 'File filter changed');
+		const newFilteredIds = new Set(filteredItems.map(item => item.item.rootFileName));
 		setFilteredFileIds(newFilteredIds);
 		setIsFileFilterActive(isActive);
-		logger.debug(
-			{
-				filteredFileCount: newFilteredIds.size,
-				isActive,
-			},
-			'File filter changed',
-		);
 	};
 
 	return (

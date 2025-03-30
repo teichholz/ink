@@ -1,15 +1,14 @@
-import childProcess from 'node:child_process';
 import chalk from 'chalk';
 import {Box, Text} from 'ink';
+import childProcess from 'node:child_process';
 import {useEffect, useState} from 'react';
+import {FileInfo, LabelInfo} from '../app.js';
 import {useComponentHeight} from '../hooks/useComponentHeight.js';
-import type {File} from '../tools.js';
-import {LabelInfo} from '../app.js';
-import {logger} from '../logger.js';
 import {useOutputStreams} from '../hooks/useOutputStreams.js';
+import {logger} from '../logger.js';
 
 type FilePreviewProps = {
-	file: File | null;
+	file: FileInfo | null;
 };
 
 type LabelPreviewProps = {
@@ -29,12 +28,12 @@ export function FilePreview({file}: FilePreviewProps) {
 		}
 
 		try {
-			childProcess.spawn('cat', [file.path], {
+			childProcess.spawn('cat', [file.paths.values().next().value!], {
 				stdio: [null, stdout, stderr],
 			});
 		} catch (err) {
 			logger.error(
-				{error: err, file: file.path},
+				{error: err, file: file.paths.values().next().value!},
 				'Failed to read file content',
 			);
 			setFileContent(null);
@@ -52,8 +51,7 @@ export function FilePreview({file}: FilePreviewProps) {
 	return (
 		<Box ref={ref} flexDirection="column" padding={1}>
 			<Text>{chalk.green('File Preview:')}</Text>
-			<Text>Path: {file.path}</Text>
-			<Text>Language: {file.language}</Text>
+			<Text>Paths: {[...file.paths].join(', ')}</Text>
 			<Text>Root file name: {file.rootFileName}</Text>
 
 			<Box marginTop={1} overflow="hidden" flexDirection="column">
@@ -84,7 +82,7 @@ export function LabelPreview({label}: LabelPreviewProps) {
 			<Text>{chalk.green('Label Preview:')}</Text>
 			<Text>Key: {label.key}</Text>
 			<Text>Languages: {Array.from(label.languages).join(', ')}</Text>
-			<Text>Defined in {label.sources.size} file(s)</Text>
+			<Text>Defined in: {label.sources.keys().toArray().join(', ')}</Text>
 		</Box>
 	);
 }

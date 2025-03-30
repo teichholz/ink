@@ -114,13 +114,13 @@ export default function Filter<T extends FilterItem>({
 			// Debounce the filter change notification to reduce flickering
 			const timeoutId = setTimeout(() => {
 				onFilterChange(filteredItems, text.length > 0);
-			}, 300);
+			}, 100);
 
 			return () => clearTimeout(timeoutId);
 		}
 
 		return () => {};
-	}, [text, onFilterChange]);
+	}, [filteredItems, text, onFilterChange]);
 
 	// Reset selected index when filtered items change
 	React.useEffect(() => {

@@ -1,0 +1,15 @@
+{
+	"de": {
+		"help_description": "Zeigt die Hilfe an.",
+		"help_cmds": "Zeigt eine Liste aller Befehle an.",
+		"help_cmd": "Zeigt die Hilfe für einen Befehl an.",
+		"help_cmd_param": "Zeigt die Hilfe für einen Befehl und seine Parameter an.",
+		"help_param": "Zeigt die Hilfe für einen Parameter an.",
+		"help_param_param": "Zeigt die Hilfe für einen Parameter und seine Parameter an.",
+		"help_subcmd": "Zeigt die Hilfe für einen Unterbefehl an.",
+		"help_subcmd_param": "Zeigt die Hilfe für einen Unterbefehl und seine Parameter an.",
+		"help_subcmd_param_param": "Zeigt die Hilfe für einen Unterbefehl und seine Parameter und Parameter an.",
+		"help_topic": "Zeigt die Hilfe für ein Thema an.",
+		"help_topic_cmd": "Zeigt die Hilfe für ein Thema und seine Befehle an."
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"en": {
+		"help_description": "Shows the help.",
+		"help_cmds": "Shows a list of all commands.",
+		"help_cmd": "Shows the help for a command.",
+		"help_cmd_param": "Shows the help for a command and its parameters.",
+		"help_param": "Shows the help for a parameter.",
+		"help_param_param": "Shows the help for a parameter and its parameters.",
+		"help_subcmd": "Shows the help for a subcommand.",
+		"help_subcmd_param": "Shows the help for a subcommand and its parameters.",
+		"help_subcmd_param_param": "Shows the help for a subcommand and its parameters and parameters.",
+		"help_topic": "Shows the help for a topic.",
+		"help_topic_cmd": "Shows the help for a topic and its commands."
+	}
+}
