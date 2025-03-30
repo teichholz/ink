@@ -34,10 +34,19 @@ export function ActiveKeybindingsProvider({
 	);
 
 	const registerKeybindings = (id: string, keybindings: Keybinding[]) => {
-		setKeybindingsMap(prev => ({
-			...prev,
-			[id]: keybindings,
-		}));
+		// Only update if keybindings have actually changed
+		setKeybindingsMap(prev => {
+			const prevBindings = prev[id];
+			if (prevBindings && 
+				prevBindings.length === keybindings.length && 
+				JSON.stringify(prevBindings) === JSON.stringify(keybindings)) {
+				return prev;
+			}
+			return {
+				...prev,
+				[id]: keybindings,
+			};
+		});
 	};
 
 	const unregisterKeybindings = (id: string) => {
@@ -90,12 +99,15 @@ export function useRegisterKeybindings(
 	useEffect(() => {
 		registerKeybindings(id, keybindings);
 		return () => unregisterKeybindings(id);
-	}, [id, keybindings, registerKeybindings, unregisterKeybindings]);
+	}, [id, registerKeybindings, unregisterKeybindings]);
 
-	// Update active component when focus changes
+	// Update active component when focus changes, with debounce
 	useEffect(() => {
 		if (isFocused) {
-			setActiveComponent(id);
+			const timeoutId = setTimeout(() => {
+				setActiveComponent(id);
+			}, 100);
+			return () => clearTimeout(timeoutId);
 		}
 	}, [id, isFocused, setActiveComponent]);
 }

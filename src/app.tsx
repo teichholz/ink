@@ -233,38 +233,40 @@ function AppContent({tools, config}: Props) {
 	// Get active keybindings
 	const activeKeybindingsContext = useActiveKeybindings();
 	const {getActiveKeybindings, activeComponentId} = activeKeybindingsContext;
-	const activeKeybindings = getActiveKeybindings();
+	const activeKeybindings = useMemo(() => getActiveKeybindings(), [activeComponentId, getActiveKeybindings]);
 
 	// Format keybindings for display
-	const formatKeyBinding = (binding: any) => {
-		if (!binding || !binding.key) {
-			return '';
-		}
-
-		const {key, label} = binding;
-		const modifiers = key.modifiers || [];
-
-		const formattedModifiers = modifiers.map((mod: string) => {
-			switch (mod) {
-				case 'ctrl':
-					return chalk.cyan('Ctrl');
-				case 'shift':
-					return chalk.cyan('Shift');
-				case 'meta':
-					return chalk.cyan('Meta');
-				default:
-					return chalk.cyan(mod);
+	const formatKeyBinding = useMemo(() => {
+		return (binding: any) => {
+			if (!binding || !binding.key) {
+				return '';
 			}
-		});
 
-		const formattedKey = chalk.cyan(key.key.toUpperCase());
+			const {key, label} = binding;
+			const modifiers = key.modifiers || [];
 
-		if (formattedModifiers.length > 0) {
-			return `${formattedModifiers.join('+')}+${formattedKey}: ${label}`;
-		}
+			const formattedModifiers = modifiers.map((mod: string) => {
+				switch (mod) {
+					case 'ctrl':
+						return chalk.cyan('Ctrl');
+					case 'shift':
+						return chalk.cyan('Shift');
+					case 'meta':
+						return chalk.cyan('Meta');
+					default:
+						return chalk.cyan(mod);
+				}
+			});
 
-		return `${formattedKey}: ${label}`;
-	};
+			const formattedKey = chalk.cyan(key.key.toUpperCase());
+
+			if (formattedModifiers.length > 0) {
+				return `${formattedModifiers.join('+')}+${formattedKey}: ${label}`;
+			}
+
+			return `${formattedKey}: ${label}`;
+		};
+	}, []);
 
 	return (
 		<Box height={rows} width={cols} flexDirection="column">
@@ -296,18 +298,20 @@ function AppContent({tools, config}: Props) {
 				flexDirection="column"
 				padding={1}
 			>
-				<Text>
-					{activeComponentId ? (
-						<>
-							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
-							{activeKeybindings.length > 0
-								? activeKeybindings.map(formatKeyBinding).join('  ')
-								: chalk.gray('No keybindings available')}
-						</>
-					) : (
-						chalk.gray('No active component')
-					)}
-				</Text>
+				{useMemo(() => (
+					<Text>
+						{activeComponentId ? (
+							<>
+								{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
+								{activeKeybindings.length > 0
+									? activeKeybindings.map(formatKeyBinding).join('  ')
+									: chalk.gray('No keybindings available')}
+							</>
+						) : (
+							chalk.gray('No active component')
+						)}
+					</Text>
+				), [activeComponentId, activeKeybindings, formatKeyBinding])}
 			</Box>
 			{NotificationComponent}
 		</Box>

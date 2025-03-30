@@ -122,41 +122,40 @@ export default function Filter<T extends FilterItem>({
 	}, [filteredItems]);
 
 	// Define keybindings using our custom hook
-	const {isFocused} = useKeybindings(
-		[
-			{
-				key: createKeyCombo('n', ['ctrl']),
-				label: 'Move selection down',
-				action: () => {
-					setSelectedIndex(prev => {
-						const newIndex = Math.min(prev + 1, filteredItems.length - 1);
-						return newIndex;
-					});
-				},
-				requiresFocus: true,
+	const keybindings = useMemo(() => [
+		{
+			key: createKeyCombo('n', ['ctrl']),
+			label: 'Move selection down',
+			action: () => {
+				setSelectedIndex(prev => {
+					const newIndex = Math.min(prev + 1, filteredItems.length - 1);
+					return newIndex;
+				});
 			},
-			{
-				key: createKeyCombo('p', ['ctrl']),
-				label: 'Move selection up',
-				action: () => {
-					setSelectedIndex(prev => {
-						const newIndex = Math.max(prev - 1, 0);
-						return newIndex;
-					});
-				},
-				requiresFocus: true,
+			requiresFocus: true,
+		},
+		{
+			key: createKeyCombo('p', ['ctrl']),
+			label: 'Move selection up',
+			action: () => {
+				setSelectedIndex(prev => {
+					const newIndex = Math.max(prev - 1, 0);
+					return newIndex;
+				});
 			},
-			{
-				key: createKeyCombo('a'),
-				label: 'Select item',
-				action: () => {
-					console.log(`Selected: ${filteredItems[selectedIndex]?.name}`);
-				},
-				requiresFocus: true,
+			requiresFocus: true,
+		},
+		{
+			key: createKeyCombo('a'),
+			label: 'Select item',
+			action: () => {
+				console.log(`Selected: ${filteredItems[selectedIndex]?.name}`);
 			},
-		],
-		id,
-	);
+			requiresFocus: true,
+		},
+	], [filteredItems.length, selectedIndex]);
+	
+	const {isFocused} = useKeybindings(keybindings, id);
 
 	// Adjust scroll offset when selected index changes
 	useEffect(() => {
