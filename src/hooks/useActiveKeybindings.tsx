@@ -37,9 +37,11 @@ export function ActiveKeybindingsProvider({
 		// Only update if keybindings have actually changed
 		setKeybindingsMap(prev => {
 			const prevBindings = prev[id];
-			if (prevBindings && 
-				prevBindings.length === keybindings.length && 
-				JSON.stringify(prevBindings) === JSON.stringify(keybindings)) {
+			if (
+				prevBindings &&
+				prevBindings.length === keybindings.length &&
+				JSON.stringify(prevBindings) === JSON.stringify(keybindings)
+			) {
 				return prev;
 			}
 			return {
@@ -106,8 +108,10 @@ export function useRegisterKeybindings(
 		if (isFocused) {
 			const timeoutId = setTimeout(() => {
 				setActiveComponent(id);
-			}, 100);
+			}, 1000);
 			return () => clearTimeout(timeoutId);
 		}
+
+		return () => {};
 	}, [id, isFocused, setActiveComponent]);
 }
