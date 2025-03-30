@@ -1,13 +1,16 @@
-import {Box, useFocusManager, Text} from 'ink';
-import React, {useEffect, useState, useMemo} from 'react';
+import chalk from 'chalk';
+import {Box, Text, useFocusManager} from 'ink';
+import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
 import {useNotification} from './components/notification.js';
 import {Config} from './config.js';
+import {
+	ActiveKeybindingsProvider,
+	useActiveKeybindings,
+} from './hooks/useActiveKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
-import {File, Tools, extractLabelsFromFile, find} from './tools.js';
 import {logger} from './logger.js';
-import chalk from 'chalk';
-import {ActiveKeybindingsProvider, useActiveKeybindings} from './hooks/useActiveKeybindings.js';
+import {File, Tools, extractLabelsFromFile, find} from './tools.js';
 
 type Props = {
 	name: string | undefined;
@@ -229,42 +232,37 @@ function AppContent({tools, config}: Props) {
 
 	// Get active keybindings
 	const activeKeybindingsContext = useActiveKeybindings();
-	const { getActiveKeybindings, activeComponentId } = activeKeybindingsContext;
+	const {getActiveKeybindings, activeComponentId} = activeKeybindingsContext;
 	const activeKeybindings = getActiveKeybindings();
-	
-	// Debug the context
-	useEffect(() => {
-		logger.debug({
-			activeComponentId,
-			hasKeybindings: activeKeybindings.length > 0,
-			contextKeys: Object.keys(activeKeybindingsContext)
-		}, 'Active keybindings context');
-	}, [activeComponentId, activeKeybindings.length]);
 
 	// Format keybindings for display
 	const formatKeyBinding = (binding: any) => {
 		if (!binding || !binding.key) {
 			return '';
 		}
-		
-		const { key, label } = binding;
+
+		const {key, label} = binding;
 		const modifiers = key.modifiers || [];
-		
+
 		const formattedModifiers = modifiers.map((mod: string) => {
 			switch (mod) {
-				case 'ctrl': return chalk.cyan('Ctrl');
-				case 'shift': return chalk.cyan('Shift');
-				case 'meta': return chalk.cyan('Meta');
-				default: return chalk.cyan(mod);
+				case 'ctrl':
+					return chalk.cyan('Ctrl');
+				case 'shift':
+					return chalk.cyan('Shift');
+				case 'meta':
+					return chalk.cyan('Meta');
+				default:
+					return chalk.cyan(mod);
 			}
 		});
-		
+
 		const formattedKey = chalk.cyan(key.key.toUpperCase());
-		
+
 		if (formattedModifiers.length > 0) {
 			return `${formattedModifiers.join('+')}+${formattedKey}: ${label}`;
 		}
-		
+
 		return `${formattedKey}: ${label}`;
 	};
 
@@ -291,13 +289,18 @@ function AppContent({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column" />
 			</Box>
 
-			<Box height="10%" width="100%" borderStyle="round" flexDirection="column" padding={1}>
+			<Box
+				height="10%"
+				width="100%"
+				borderStyle="round"
+				flexDirection="column"
+				padding={1}
+			>
 				<Text>
 					{activeComponentId ? (
 						<>
-							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}
-							{' '}
-							{activeKeybindings.length > 0 
+							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
+							{activeKeybindings.length > 0
 								? activeKeybindings.map(formatKeyBinding).join('  ')
 								: chalk.gray('No keybindings available')}
 						</>
