@@ -18,7 +18,7 @@ type LabelPreviewProps = {
 
 export function FilePreview({file}: FilePreviewProps) {
 	const [fileContent, setFileContent] = useState<string | null>(null);
-	const [ref, availableHeight] = useComponentHeight(5);
+	const {ref, height: availableHeight} = useComponentHeight(5);
 	const {allOutput, errOutput, stdout, stderr} =
 		useOutputStreams(availableHeight);
 
