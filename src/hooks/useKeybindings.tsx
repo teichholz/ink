@@ -56,7 +56,7 @@ export type KeyCombo = {
 	/**
 	 * Letter key
 	 */
-	key: LetterKey;
+	key?: LetterKey;
 
 	/**
 	 * Modifier keys like ctrl, shift, meta, etc.
@@ -85,6 +85,12 @@ export type Keybinding = {
 	 * @default true
 	 */
 	requiresFocus?: boolean;
+
+	/**
+	 * Whether to show this keybinding in the help text
+	 * @default false
+	 */
+	showInHelp?: boolean;
 };
 
 /**
@@ -106,6 +112,7 @@ export function useKeybindings(keybindings: Keybinding[], id: string) {
 
 	keybindings.forEach(binding => {
 		binding.requiresFocus = binding.requiresFocus || true;
+		binding.showInHelp = binding.showInHelp || false;
 	});
 
 	/**
@@ -114,7 +121,7 @@ export function useKeybindings(keybindings: Keybinding[], id: string) {
 	const normalizeKeyBinding = (
 		keyBinding: KeyCombo,
 	): {
-		mainKey: string | keyof Key;
+		mainKey?: string | keyof Key;
 		modifiers: ModifierKey[];
 	} => {
 		return {
@@ -137,6 +144,12 @@ export function useKeybindings(keybindings: Keybinding[], id: string) {
 
 			const modifiersMatch = modifiers.every(modifier => key[modifier]);
 			if (!modifiersMatch) {
+				continue;
+			}
+
+			// if the binding has no letter, execute it now
+			if (!letterKey) {
+				binding.action();
 				continue;
 			}
 

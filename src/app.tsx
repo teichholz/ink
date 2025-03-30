@@ -4,6 +4,7 @@ import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
 import {useNotification} from './components/notification.js';
+import {FilePreview, LabelPreview} from './components/preview.js';
 import {Config} from './config.js';
 import {currentFocusedKeybindings} from './hooks/useKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
@@ -17,7 +18,7 @@ type Props = {
 };
 
 // Type for storing label information
-type LabelInfo = {
+export type LabelInfo = {
 	/**
 	 *  The label value (e.g. 'hello')
 	 */
@@ -59,6 +60,10 @@ function AppContent({tools, config}: Props) {
 	// Track whether filters are active
 	const [isLabelFilterActive, setIsLabelFilterActive] = useState(false);
 	const [isFileFilterActive, setIsFileFilterActive] = useState(false);
+
+	// Track selected items for preview
+	const [selectedLabel, setSelectedLabel] = useState<LabelInfo | null>(null);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
 	const [activeKeybindings] = useAtom(currentFocusedKeybindings);
 
@@ -238,15 +243,29 @@ function AppContent({tools, config}: Props) {
 							` (${chalk.yellow(Array.from(item.item.languages).join(', '))})`
 						}
 						onFilterChange={handleLabelFilterChange}
+						onSelect={item => {
+							setSelectedLabel(item.item);
+							setSelectedFile(null);
+						}}
 					/>
 					<Filter
 						id="filter2"
 						items={visibleFiles}
 						placeholder="Filter by file"
 						onFilterChange={handleFileFilterChange}
+						onSelect={item => {
+							setSelectedFile(item.item);
+							setSelectedLabel(null);
+						}}
 					/>
 				</Box>
-				<Box width="75%" borderStyle="round" flexDirection="column" />
+				<Box width="75%" borderStyle="round" flexDirection="column">
+					{selectedLabel ? (
+						<LabelPreview label={selectedLabel} />
+					) : (
+						<FilePreview file={selectedFile} />
+					)}
+				</Box>
 			</Box>
 
 			<Box height={1} width="100%" flexDirection="column" padding={1}>

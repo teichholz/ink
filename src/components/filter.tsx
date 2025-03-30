@@ -4,7 +4,7 @@ import Fuse from 'fuse.js';
 import {Box, DOMElement, measureElement, Text} from 'ink';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import type {Simplify} from 'type-fest';
-import {useKeybindings, createKeyCombo} from '../hooks/useKeybindings.js';
+import {createKeyCombo, useKeybindings} from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
 
 export type FilterItem = {
@@ -57,6 +57,11 @@ type Props<T extends FilterItem> = {
 	 * Callback function to notify parent component about filter changes
 	 */
 	onFilterChange?: (filteredItems: T[], isActive: boolean) => void;
+
+	/**
+	 * Callback function when an item is selected
+	 */
+	onSelect?: (item: T) => void;
 };
 
 export default function Filter<T extends FilterItem>({
@@ -69,6 +74,7 @@ export default function Filter<T extends FilterItem>({
 	outerBox,
 	filterOptions,
 	onFilterChange,
+	onSelect,
 }: Props<T>) {
 	const ref = useRef<DOMElement>(null);
 	const [text, setText] = useState('');
@@ -114,7 +120,7 @@ export default function Filter<T extends FilterItem>({
 		}
 
 		return () => {};
-	}, [text, onFilterChange]); // Only depend on text changes, not filteredItems
+	}, [text, onFilterChange]);
 
 	// Reset selected index when filtered items change
 	React.useEffect(() => {
@@ -134,6 +140,7 @@ export default function Filter<T extends FilterItem>({
 					});
 				},
 				requiresFocus: true,
+				showInHelp: true,
 			},
 			{
 				key: createKeyCombo('p', ['ctrl']),
@@ -145,14 +152,7 @@ export default function Filter<T extends FilterItem>({
 					});
 				},
 				requiresFocus: true,
-			},
-			{
-				key: createKeyCombo('', ['return']),
-				label: 'Select item',
-				action: () => {
-					console.log(`Selected: ${filteredItems[selectedIndex]?.name}`);
-				},
-				requiresFocus: true,
+				showInHelp: true,
 			},
 		],
 		[filteredItems.length, selectedIndex],
@@ -160,7 +160,15 @@ export default function Filter<T extends FilterItem>({
 
 	const {isFocused} = useKeybindings(keybindings, id);
 
-	// Adjust scroll offset when selected index changes
+	// notify app that an item is selected
+	useEffect(() => {
+		const selected = filteredItems[selectedIndex];
+		if (selected && isFocused) {
+			onSelect?.(selected);
+		}
+	}, [selectedIndex, filteredItems, isFocused]);
+
+	// scroll bar logic
 	useEffect(() => {
 		if (selectedIndex < scrollOffset) {
 			// Scroll up if selected item is above visible area
