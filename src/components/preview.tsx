@@ -1,7 +1,8 @@
 import childProcess from 'node:child_process';
 import chalk from 'chalk';
-import {Box, DOMElement, measureElement, Text} from 'ink';
-import {useEffect, useRef, useState} from 'react';
+import {Box, Text} from 'ink';
+import {useEffect, useState} from 'react';
+import {useComponentHeight} from '../hooks/useComponentHeight.js';
 import type {File} from '../tools.js';
 import {LabelInfo} from '../app.js';
 import {logger} from '../logger.js';
@@ -17,18 +18,9 @@ type LabelPreviewProps = {
 
 export function FilePreview({file}: FilePreviewProps) {
 	const [fileContent, setFileContent] = useState<string | null>(null);
-	const ref = useRef<DOMElement>(null);
-	const [availableHeight, setAvailableHeight] = useState(0);
+	const [ref, availableHeight] = useComponentHeight(5);
 	const {allOutput, errOutput, stdout, stderr} =
 		useOutputStreams(availableHeight);
-
-	// Calculate available height for items (accounting for input and borders)
-	useEffect(() => {
-		if (ref.current) {
-			const {height} = measureElement(ref.current);
-			setAvailableHeight(height - 5);
-		}
-	}, []);
 
 	useEffect(() => {
 		if (!file) {
