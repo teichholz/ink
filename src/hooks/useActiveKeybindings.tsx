@@ -59,9 +59,19 @@ export function ActiveKeybindingsProvider({
 		});
 	};
 
+	// Memoize the active keybindings to prevent unnecessary recalculations
+	const [cachedKeybindings, setCachedKeybindings] = useState<Keybinding[]>([]);
+	
+	useEffect(() => {
+		if (!activeComponentId) {
+			setCachedKeybindings([]);
+		} else {
+			setCachedKeybindings(keybindingsMap[activeComponentId] || []);
+		}
+	}, [activeComponentId, keybindingsMap]);
+	
 	const getActiveKeybindings = (): Keybinding[] => {
-		if (!activeComponentId) return [];
-		return keybindingsMap[activeComponentId] || [];
+		return cachedKeybindings;
 	};
 
 	return (
@@ -106,12 +116,16 @@ export function useRegisterKeybindings(
 	// Update active component when focus changes, with debounce
 	useEffect(() => {
 		if (isFocused) {
-			const timeoutId = setTimeout(() => {
-				setActiveComponent(id);
-			}, 1000);
-			return () => clearTimeout(timeoutId);
+			// Store the previous active component to avoid unnecessary updates
+			const prevActiveComponent = activeComponentId;
+			
+			if (prevActiveComponent !== id) {
+				const timeoutId = setTimeout(() => {
+					setActiveComponent(id);
+				}, 100);
+				return () => clearTimeout(timeoutId);
+			}
 		}
-
 		return () => {};
-	}, [id, isFocused, setActiveComponent]);
+	}, [id, isFocused, setActiveComponent, activeComponentId]);
 }

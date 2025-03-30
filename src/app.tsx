@@ -230,13 +230,21 @@ function AppContent({tools, config}: Props) {
 		);
 	};
 
-	// Get active keybindings
+	// Get active keybindings - with stable reference
 	const activeKeybindingsContext = useActiveKeybindings();
 	const {getActiveKeybindings, activeComponentId} = activeKeybindingsContext;
-	const activeKeybindings = useMemo(
-		() => getActiveKeybindings(),
-		[activeComponentId, getActiveKeybindings],
-	);
+	
+	// Only get keybindings when component ID changes to reduce renders
+	const [activeKeybindings, setActiveKeybindings] = useState<any[]>([]);
+	
+	useEffect(() => {
+		// Debounce the keybindings update
+		const timeoutId = setTimeout(() => {
+			setActiveKeybindings(getActiveKeybindings());
+		}, 150);
+		
+		return () => clearTimeout(timeoutId);
+	}, [activeComponentId]);
 
 	// Format keybindings for display
 	const formatKeyBinding = useMemo(() => {
@@ -301,23 +309,18 @@ function AppContent({tools, config}: Props) {
 				flexDirection="column"
 				padding={1}
 			>
-				{useMemo(
-					() => (
-						<Text>
-							{activeComponentId ? (
-								<>
-									{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
-									{activeKeybindings.length > 0
-										? activeKeybindings.map(formatKeyBinding).join('  ')
-										: chalk.gray('No keybindings available')}
-								</>
-							) : (
-								chalk.gray('No active component')
-							)}
-						</Text>
-					),
-					[activeComponentId, activeKeybindings, formatKeyBinding],
-				)}
+				<Text>
+					{activeComponentId ? (
+						<>
+							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
+							{activeKeybindings.length > 0
+								? activeKeybindings.map(formatKeyBinding).join('  ')
+								: chalk.gray('No keybindings available')}
+						</>
+					) : (
+						chalk.gray('No active component')
+					)}
+				</Text>
 			</Box>
 			{NotificationComponent}
 		</Box>
