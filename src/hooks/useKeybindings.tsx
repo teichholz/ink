@@ -86,6 +86,10 @@ export type Keybinding = {
  */
 export function useKeybindings(keybindings: Keybinding[], id: string) {
 	const {isFocused} = useFocus({id});
+	
+	// Register keybindings with the global registry
+	const { useRegisterKeybindings } = require('./useActiveKeybindings');
+	useRegisterKeybindings(id, keybindings, isFocused);
 
 	/**
 	 * Normalize key format to internal representation

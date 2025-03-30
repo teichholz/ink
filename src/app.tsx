@@ -1,4 +1,4 @@
-import {Box, useFocusManager} from 'ink';
+import {Box, useFocusManager, Text} from 'ink';
 import React, {useEffect, useState, useMemo} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
 import {useNotification} from './components/notification.js';
@@ -7,6 +7,7 @@ import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {File, Tools, extractLabelsFromFile, find} from './tools.js';
 import {logger} from './logger.js';
 import chalk from 'chalk';
+import {ActiveKeybindingsProvider, useActiveKeybindings} from './hooks/useActiveKeybindings.js';
 
 type Props = {
 	name: string | undefined;
@@ -37,7 +38,16 @@ interface Item<T> extends FilterItem {
 	item: T;
 }
 
-export default function App({tools, config}: Props) {
+// Wrap the app with the ActiveKeybindingsProvider
+export default function App(props: Props) {
+	return (
+		<ActiveKeybindingsProvider>
+			<AppContent {...props} />
+		</ActiveKeybindingsProvider>
+	);
+}
+
+function AppContent({tools, config}: Props) {
 	const [allFiles, setAllFiles] = useState<Array<Item<File>>>([]);
 	const [allLabels, setAllLabels] = useState<Array<Item<LabelInfo>>>([]);
 
@@ -217,6 +227,33 @@ export default function App({tools, config}: Props) {
 		);
 	};
 
+	// Get active keybindings
+	const { getActiveKeybindings, activeComponentId } = useActiveKeybindings();
+	const activeKeybindings = getActiveKeybindings();
+
+	// Format keybindings for display
+	const formatKeyBinding = (binding: any) => {
+		const { key, label } = binding;
+		const modifiers = key.modifiers || [];
+		
+		const formattedModifiers = modifiers.map((mod: string) => {
+			switch (mod) {
+				case 'ctrl': return chalk.cyan('Ctrl');
+				case 'shift': return chalk.cyan('Shift');
+				case 'meta': return chalk.cyan('Meta');
+				default: return chalk.cyan(mod);
+			}
+		});
+		
+		const formattedKey = chalk.cyan(key.key.toUpperCase());
+		
+		if (formattedModifiers.length > 0) {
+			return `${formattedModifiers.join('+')}+${formattedKey}: ${label}`;
+		}
+		
+		return `${formattedKey}: ${label}`;
+	};
+
 	return (
 		<Box height={rows} width={cols} flexDirection="column">
 			<Box height="90%" width="100%" flexDirection="row">
@@ -240,8 +277,20 @@ export default function App({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column" />
 			</Box>
 
-			<Box height="10%" width="100%" borderStyle="round" flexDirection="column">
-				Keybinds here
+			<Box height="10%" width="100%" borderStyle="round" flexDirection="column" padding={1}>
+				<Text>
+					{activeComponentId ? (
+						<>
+							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}
+							{' '}
+							{activeKeybindings.length > 0 
+								? activeKeybindings.map(formatKeyBinding).join('  ')
+								: chalk.gray('No keybindings available')}
+						</>
+					) : (
+						chalk.gray('No active component')
+					)}
+				</Text>
 			</Box>
 			{NotificationComponent}
 		</Box>
