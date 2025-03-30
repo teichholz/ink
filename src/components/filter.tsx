@@ -88,7 +88,7 @@ export default function Filter<T extends FilterItem>({
 			const {height} = measureElement(ref.current);
 			setAvailableHeight(height - 5);
 		}
-	}, []); // Only run once on mount
+	}, []);
 
 	// Initialize Fuse instance with default options focused on name property
 	const fuse = useMemo(() => {

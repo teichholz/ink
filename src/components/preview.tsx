@@ -1,10 +1,11 @@
+import childProcess from 'node:child_process';
 import chalk from 'chalk';
-import {Box, Text} from 'ink';
-import {useEffect, useState} from 'react';
-import {execSync} from 'child_process';
+import {Box, DOMElement, measureElement, Text} from 'ink';
+import {useEffect, useRef, useState} from 'react';
 import type {File} from '../tools.js';
 import {LabelInfo} from '../app.js';
 import {logger} from '../logger.js';
+import {useOutputStreams} from '../hooks/useOutputStreams.js';
 
 type FilePreviewProps = {
 	file: File | null;
@@ -16,29 +17,37 @@ type LabelPreviewProps = {
 
 export function FilePreview({file}: FilePreviewProps) {
 	const [fileContent, setFileContent] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const ref = useRef<DOMElement>(null);
+	const [availableHeight, setAvailableHeight] = useState(0);
+	const {allOutput, errOutput, stdout, stderr} =
+		useOutputStreams(availableHeight);
+
+	// Calculate available height for items (accounting for input and borders)
+	useEffect(() => {
+		if (ref.current) {
+			const {height} = measureElement(ref.current);
+			setAvailableHeight(height - 5);
+		}
+	}, []);
 
 	useEffect(() => {
 		if (!file) {
 			setFileContent(null);
-			setError(null);
 			return;
 		}
 
 		try {
-			// Execute cat command to get file content
-			const content = execSync(`cat "${file.path}"`, {
-				encoding: 'utf-8',
-				maxBuffer: 1024 * 1024, // 1MB buffer
+			childProcess.spawn('cat', [file.path], {
+				stdio: [null, stdout, stderr],
 			});
-			setFileContent(content);
-			setError(null);
 		} catch (err) {
-			logger.error({error: err, file: file.path}, 'Failed to read file content');
-			setError(`Failed to read file: ${err instanceof Error ? err.message : String(err)}`);
+			logger.error(
+				{error: err, file: file.path},
+				'Failed to read file content',
+			);
 			setFileContent(null);
 		}
-	}, [file]);
+	}, [file, fileContent]);
 
 	if (!file) {
 		return (
@@ -49,22 +58,18 @@ export function FilePreview({file}: FilePreviewProps) {
 	}
 
 	return (
-		<Box flexDirection="column" padding={1}>
+		<Box ref={ref} flexDirection="column" padding={1}>
 			<Text>{chalk.green('File Preview:')}</Text>
 			<Text>Path: {file.path}</Text>
 			<Text>Language: {file.language}</Text>
 			<Text>Root file name: {file.rootFileName}</Text>
-			
-			<Box marginTop={1} flexDirection="column">
+
+			<Box marginTop={1} overflow="hidden" flexDirection="column">
 				<Text>{chalk.blue('File Content:')}</Text>
-				{error ? (
-					<Text color="red">{error}</Text>
-				) : fileContent ? (
-					<Box flexDirection="column" overflowY="scroll" height={15}>
-						{fileContent.split('\n').map((line, i) => (
-							<Text key={i}>{line}</Text>
-						))}
-					</Box>
+				{errOutput ? (
+					<Text color="red">{errOutput}</Text>
+				) : allOutput ? (
+					<Text>{allOutput}</Text>
 				) : (
 					<Text>{chalk.yellow('Loading file content...')}</Text>
 				)}
