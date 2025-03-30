@@ -240,12 +240,9 @@ export default function App({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column" />
 			</Box>
 
-			<Box
-				height="10%"
-				width="100%"
-				borderStyle="round"
-				flexDirection="column"
-			/>
+			<Box height="10%" width="100%" borderStyle="round" flexDirection="column">
+				Keybinds here
+			</Box>
 			{NotificationComponent}
 		</Box>
 	);
