@@ -3,8 +3,11 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"target": "ES2022",
+		"jsx": "react-jsx",
 		"moduleResolution": "nodenext",
 		"noUncheckedIndexedAccess": false
 	},
-	"include": ["src"]
+	"include": [
+		"src"
+	]
 }

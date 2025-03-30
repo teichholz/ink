@@ -1,16 +1,14 @@
 import chalk from 'chalk';
 import {Box, Text, useFocusManager} from 'ink';
+import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
 import {useNotification} from './components/notification.js';
 import {Config} from './config.js';
-import {
-	ActiveKeybindingsProvider,
-	useActiveKeybindings,
-} from './hooks/useActiveKeybindings.js';
+import {currentFocusedKeybindings} from './hooks/useKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
-import {File, Tools, extractLabelsFromFile, find} from './tools.js';
+import {extractLabelsFromFile, File, find, Tools} from './tools.js';
 
 type Props = {
 	name: string | undefined;
@@ -43,11 +41,7 @@ interface Item<T> extends FilterItem {
 
 // Wrap the app with the ActiveKeybindingsProvider
 export default function App(props: Props) {
-	return (
-		<ActiveKeybindingsProvider>
-			<AppContent {...props} />
-		</ActiveKeybindingsProvider>
-	);
+	return <AppContent {...props} />;
 }
 
 function AppContent({tools, config}: Props) {
@@ -65,6 +59,8 @@ function AppContent({tools, config}: Props) {
 	// Track whether filters are active
 	const [isLabelFilterActive, setIsLabelFilterActive] = useState(false);
 	const [isFileFilterActive, setIsFileFilterActive] = useState(false);
+
+	const [activeKeybindings] = useAtom(currentFocusedKeybindings);
 
 	const [cols, rows] = useStdoutDimensions();
 	const {focusNext} = useFocusManager();
@@ -230,58 +226,9 @@ function AppContent({tools, config}: Props) {
 		);
 	};
 
-	// Get active keybindings - with stable reference
-	const activeKeybindingsContext = useActiveKeybindings();
-	const {getActiveKeybindings, activeComponentId} = activeKeybindingsContext;
-	
-	// Only get keybindings when component ID changes to reduce renders
-	const [activeKeybindings, setActiveKeybindings] = useState<any[]>([]);
-	
-	useEffect(() => {
-		// Debounce the keybindings update
-		const timeoutId = setTimeout(() => {
-			setActiveKeybindings(getActiveKeybindings());
-		}, 150);
-		
-		return () => clearTimeout(timeoutId);
-	}, [activeComponentId]);
-
-	// Format keybindings for display
-	const formatKeyBinding = useMemo(() => {
-		return (binding: any) => {
-			if (!binding || !binding.key) {
-				return '';
-			}
-
-			const {key, label} = binding;
-			const modifiers = key.modifiers || [];
-
-			const formattedModifiers = modifiers.map((mod: string) => {
-				switch (mod) {
-					case 'ctrl':
-						return chalk.cyan('Ctrl');
-					case 'shift':
-						return chalk.cyan('Shift');
-					case 'meta':
-						return chalk.cyan('Meta');
-					default:
-						return chalk.cyan(mod);
-				}
-			});
-
-			const formattedKey = chalk.cyan(key.key.toUpperCase());
-
-			if (formattedModifiers.length > 0) {
-				return `${formattedModifiers.join('+')}+${formattedKey}: ${label}`;
-			}
-
-			return `${formattedKey}: ${label}`;
-		};
-	}, []);
-
 	return (
 		<Box height={rows} width={cols} flexDirection="column">
-			<Box height="90%" width="100%" flexDirection="row">
+			<Box height={rows - 1} width="100%" flexDirection="row">
 				<Box width="25%" flexDirection="column">
 					<Filter
 						id="filter1"
@@ -302,25 +249,8 @@ function AppContent({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column" />
 			</Box>
 
-			<Box
-				height="10%"
-				width="100%"
-				borderStyle="round"
-				flexDirection="column"
-				padding={1}
-			>
-				<Text>
-					{activeComponentId ? (
-						<>
-							{chalk.bold(`Active keybindings for ${activeComponentId}:`)}{' '}
-							{activeKeybindings.length > 0
-								? activeKeybindings.map(formatKeyBinding).join('  ')
-								: chalk.gray('No keybindings available')}
-						</>
-					) : (
-						chalk.gray('No active component')
-					)}
-				</Text>
+			<Box height={1} width="100%" flexDirection="column" padding={1}>
+				<Text>{activeKeybindings?.pretty()}</Text>
 			</Box>
 			{NotificationComponent}
 		</Box>

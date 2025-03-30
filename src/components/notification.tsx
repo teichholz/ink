@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import {Box, Text, useInput} from 'ink';
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {useStdoutDimensions} from '../hooks/useStdoutDimensions.js';
 
 export type NotificationProps = {

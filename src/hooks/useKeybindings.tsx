@@ -1,7 +1,8 @@
-import {useInput, useFocus, Key} from 'ink';
-import {useCallback, useMemo} from 'react';
 import chalk from 'chalk';
-import {useRegisterKeybindings} from './useActiveKeybindings.js';
+import {Key, useFocus, useInput} from 'ink';
+import {atom} from 'jotai';
+import {useAtom} from 'jotai';
+import {useCallback, useEffect, useMemo} from 'react';
 
 /**
  * Helper function to create a KeyCombo
@@ -13,9 +14,17 @@ export function createKeyCombo(
 	return {key, modifiers};
 }
 
+type ActiveKeybindings = {
+	pretty: () => string;
+	keybindings: Keybinding[];
+};
+
+export const currentFocusedKeybindings = atom<ActiveKeybindings>();
+
 type ModifierKey = keyof Key;
 
 type LetterKey =
+	| ''
 	| 'a'
 	| 'b'
 	| 'c'
@@ -87,9 +96,17 @@ export type Keybinding = {
  */
 export function useKeybindings(keybindings: Keybinding[], id: string) {
 	const {isFocused} = useFocus({id});
-	
-	// Register keybindings with the global registry
-	useRegisterKeybindings(id, keybindings, isFocused);
+	const [_, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
+
+	useEffect(() => {
+		if (isFocused) {
+			setActiveKeybindings({pretty: getKeybindingsHelp, keybindings});
+		}
+	}, [isFocused, keybindings]);
+
+	keybindings.forEach(binding => {
+		binding.requiresFocus = binding.requiresFocus || true;
+	});
 
 	/**
 	 * Normalize key format to internal representation

@@ -1,7 +1,7 @@
-import chalk from "chalk";
-import { Text, useInput } from "ink";
-import React, { useState, useEffect } from "react";
-import type { Except } from "type-fest";
+import chalk from 'chalk';
+import {Text, useInput} from 'ink';
+import {useEffect, useState} from 'react';
+import type {Except} from 'type-fest';
 
 export type Props = {
 	/**
@@ -48,7 +48,7 @@ export type Props = {
 
 function TextInput({
 	value: originalValue,
-	placeholder = "",
+	placeholder = '',
 	focus = true,
 	mask,
 	highlightPastedText = false,
@@ -57,19 +57,19 @@ function TextInput({
 	onSubmit,
 }: Props) {
 	const [state, setState] = useState({
-		cursorOffset: (originalValue || "").length,
+		cursorOffset: (originalValue || '').length,
 		cursorWidth: 0,
 	});
 
-	const { cursorOffset, cursorWidth } = state;
+	const {cursorOffset, cursorWidth} = state;
 
 	useEffect(() => {
-		setState((previousState) => {
+		setState(previousState => {
 			if (!focus || !showCursor) {
 				return previousState;
 			}
 
-			const newValue = originalValue || "";
+			const newValue = originalValue || '';
 
 			if (previousState.cursorOffset > newValue.length - 1) {
 				return {
@@ -93,9 +93,9 @@ function TextInput({
 		renderedPlaceholder =
 			placeholder.length > 0
 				? chalk.inverse(placeholder[0]) + chalk.grey(placeholder.slice(1))
-				: chalk.inverse(" ");
+				: chalk.inverse(' ');
 
-		renderedValue = value.length > 0 ? "" : chalk.inverse(" ");
+		renderedValue = value.length > 0 ? '' : chalk.inverse(' ');
 
 		let i = 0;
 
@@ -109,7 +109,7 @@ function TextInput({
 		}
 
 		if (value.length > 0 && cursorOffset === value.length) {
-			renderedValue += chalk.inverse(" ");
+			renderedValue += chalk.inverse(' ');
 		}
 	}
 
@@ -118,18 +118,18 @@ function TextInput({
 			if (
 				key.upArrow ||
 				key.downArrow ||
-				(key.ctrl && input === "c") ||
+				(key.ctrl && input === 'c') ||
 				key.tab ||
 				(key.shift && key.tab)
 			) {
 				return;
 			}
 
-			if (key.ctrl && input === "n") {
+			if (key.ctrl && input === 'n') {
 				return;
 			}
 
-			if (key.ctrl && input === "p") {
+			if (key.ctrl && input === 'p') {
 				return;
 			}
 
@@ -161,11 +161,11 @@ function TextInput({
 
 					nextCursorOffset--;
 				}
-			} else if (key.ctrl && input === "w") {
+			} else if (key.ctrl && input === 'w') {
 				const words = originalValue.split(/\s/);
 				nextValue = words
 					.slice(0, words.length - 1)
-					.join(" ")
+					.join(' ')
 					.trimEnd();
 				nextCursorOffset = nextValue.length;
 			} else {
@@ -198,7 +198,7 @@ function TextInput({
 				onChange(nextValue);
 			}
 		},
-		{ isActive: focus },
+		{isActive: focus},
 	);
 
 	return (
@@ -219,10 +219,10 @@ type UncontrolledProps = {
 	 * Initial value.
 	 */
 	readonly initialValue?: string;
-} & Except<Props, "value" | "onChange">;
+} & Except<Props, 'value' | 'onChange'>;
 
 export function UncontrolledTextInput({
-	initialValue = "",
+	initialValue = '',
 	...props
 }: UncontrolledProps) {
 	const [value, setValue] = useState(initialValue);

@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import {existsSync} from 'node:fs';
-import {clearScreenDown, cursorTo} from 'node:readline';
 import chalk from 'chalk';
 import {render} from 'ink';
 import meow from 'meow';
-import React from 'react';
+import {existsSync} from 'node:fs';
+import {clearScreenDown, cursorTo} from 'node:readline';
 import App from './app.js';
 import {getConfig} from './config.js';
 import {getTools} from './tools.js';

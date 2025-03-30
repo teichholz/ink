@@ -147,7 +147,7 @@ export default function Filter<T extends FilterItem>({
 				requiresFocus: true,
 			},
 			{
-				key: createKeyCombo('a'),
+				key: createKeyCombo('', ['return']),
 				label: 'Select item',
 				action: () => {
 					console.log(`Selected: ${filteredItems[selectedIndex]?.name}`);
