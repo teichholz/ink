@@ -230,7 +230,7 @@ function AppContent({tools, config}: Props) {
 		filteredItems: Array<{id: string}>,
 		isActive: boolean,
 	) => {
-		const newFilteredIds = new Set(filteredItems.map(item => item.id));
+		const newFilteredIds = new Set(filteredItems.flatMap(item => item.id));
 		setFilteredLabelIds(newFilteredIds);
 		setIsLabelFilterActive(isActive);
 	};
@@ -241,7 +241,9 @@ function AppContent({tools, config}: Props) {
 		isActive: boolean,
 	) => {
 		logger.info({filteredItems}, 'File filter changed');
-		const newFilteredIds = new Set(filteredItems.map(item => item.item.rootFileName));
+		const newFilteredIds = new Set(
+			filteredItems.flatMap(item => [...item.item.paths]),
+		);
 		setFilteredFileIds(newFilteredIds);
 		setIsFileFilterActive(isActive);
 	};

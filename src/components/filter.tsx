@@ -6,6 +6,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import type {Simplify} from 'type-fest';
 import {createKeyCombo, useKeybindings} from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
+import {logger} from '../logger.js';
 
 export type FilterItem = {
 	id: string;
@@ -113,6 +114,7 @@ export default function Filter<T extends FilterItem>({
 		if (onFilterChange) {
 			// Debounce the filter change notification to reduce flickering
 			const timeoutId = setTimeout(() => {
+				logger.info({filteredItems}, 'Filter changed');
 				onFilterChange(filteredItems, text.length > 0);
 			}, 100);
 
@@ -120,7 +122,7 @@ export default function Filter<T extends FilterItem>({
 		}
 
 		return () => {};
-	}, [filteredItems, text, onFilterChange]);
+	}, [filteredItems, onFilterChange]);
 
 	// Reset selected index when filtered items change
 	React.useEffect(() => {
