@@ -50,9 +50,14 @@ export type LabelInfo = {
 	languages: Set<string>;
 
 	/**
+	 * Where the labels are defined
+	 */
+	sources: Set<FilePath>;
+
+	/**
 	 * The concrete files and their value for the label
 	 */
-	sources: Map<FilePath, unknown>; // Maps file path to the label value
+	values: Map<FilePath, unknown>;
 };
 
 interface Item<T> extends FilterItem {
@@ -69,12 +74,10 @@ function AppContent({tools, config}: Props) {
 	const [allLabels, setAllLabels] = useState<Array<Item<LabelInfo>>>([]);
 
 	// Track filtered items
-	const [filteredLabelIds, setFilteredLabelIds] = useState<Set<string>>(
+	const [filteredLabels, setFilteredLabels] = useState<Set<LabelInfo>>(
 		new Set(),
 	);
-	const [filteredFileIds, setFilteredFileIds] = useState<Set<string>>(
-		new Set(),
-	);
+	const [filteredFiles, setFilteredFiles] = useState<Set<FileInfo>>(new Set());
 
 	// Track whether filters are active
 	const [isLabelFilterActive, setIsLabelFilterActive] = useState(false);
@@ -152,13 +155,15 @@ function AppContent({tools, config}: Props) {
 						labelInfo = {
 							key,
 							languages: new Set(),
-							sources: new Map(),
+							sources: new Set(),
+							values: new Map(),
 						};
 						labelInfoMap.set(key, labelInfo);
 					}
 
 					labelInfo.languages.add(file.language);
-					labelInfo.sources.set(file.rootFileName, value);
+					labelInfo.sources.add(file.path);
+					labelInfo.values.set(file.path, value);
 				}
 			}
 
@@ -191,47 +196,47 @@ function AppContent({tools, config}: Props) {
 
 	// Filter labels based on selected files - with memoization to prevent recalculation
 	const visibleLabels = useMemo(() => {
-		logger.info({filteredFileIds}, 'Filtering labels');
-
-		if (!isFileFilterActive || filteredFileIds.size === 0) {
+		if (!isFileFilterActive || filteredFiles.size === 0) {
 			return allLabels;
 		}
 
+		const allPathsInFilteredFiles = new Set(
+			filteredFiles
+				.values()
+				.flatMap(file => file.paths)
+				.toArray(),
+		);
+
 		return allLabels.filter(label => {
-			// Check if any of the label's sources are in the filtered files
-			for (const file of label.item.sources.keys()) {
-				logger.info({file: file, label: label}, 'Checking file');
-				if (filteredFileIds.has(file)) {
-					return true;
-				}
-			}
-			return false;
+			return !label.item.sources.isDisjointFrom(allPathsInFilteredFiles);
 		});
-	}, [allLabels, filteredFileIds, isFileFilterActive]);
+	}, [allLabels, filteredFiles, isFileFilterActive]);
 
 	// Filter files based on selected labels - with memoization to prevent recalculation
 	const visibleFiles = useMemo(() => {
-		if (!isLabelFilterActive || filteredLabelIds.size === 0) {
+		if (!isLabelFilterActive || filteredLabels.size === 0) {
 			return allFiles;
 		}
 
+		const allPathsInFilteredLabels = new Set(
+			filteredLabels
+				.values()
+				.flatMap(label => label.sources)
+				.toArray(),
+		);
+
 		return allFiles.filter(file => {
-			// Check if this file contains any of the filtered labels
-			return allLabels.some(
-				label =>
-					filteredLabelIds.has(label.id) &&
-					label.item.sources.has(file.item.rootFileName),
-			);
+			return !file.item.paths.isDisjointFrom(allPathsInFilteredLabels);
 		});
-	}, [allFiles, allLabels, filteredLabelIds, isLabelFilterActive]);
+	}, [allFiles, allLabels, filteredLabels, isLabelFilterActive]);
 
 	// Handle label filter changes
 	const handleLabelFilterChange = (
-		filteredItems: Array<{id: string}>,
+		filteredItems: Array<Item<LabelInfo>>,
 		isActive: boolean,
 	) => {
-		const newFilteredIds = new Set(filteredItems.flatMap(item => item.id));
-		setFilteredLabelIds(newFilteredIds);
+		const newFilteredIds = new Set(filteredItems.flatMap(item => item.item));
+		setFilteredLabels(newFilteredIds);
 		setIsLabelFilterActive(isActive);
 	};
 
@@ -240,11 +245,8 @@ function AppContent({tools, config}: Props) {
 		filteredItems: Array<Item<FileInfo>>,
 		isActive: boolean,
 	) => {
-		logger.info({filteredItems}, 'File filter changed');
-		const newFilteredIds = new Set(
-			filteredItems.flatMap(item => [...item.item.paths]),
-		);
-		setFilteredFileIds(newFilteredIds);
+		const newFilteredIds = new Set(filteredItems.flatMap(item => item.item));
+		setFilteredFiles(newFilteredIds);
 		setIsFileFilterActive(isActive);
 	};
 

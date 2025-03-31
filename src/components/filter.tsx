@@ -122,7 +122,7 @@ export default function Filter<T extends FilterItem>({
 		}
 
 		return () => {};
-	}, [filteredItems, onFilterChange]);
+	}, [filteredItems]);
 
 	// Reset selected index when filtered items change
 	React.useEffect(() => {
