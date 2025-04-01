@@ -137,66 +137,83 @@ export function parseJson(json: string): JsonNode {
  * This could be used if we need to transform the AST further
  */
 export function transformAcornAst(node: Node): JsonNode {
-	if (node.type === "ObjectExpression") {
-		return {
-			type: "ObjectExpression",
-			properties: node.properties.map(
-				(prop) => transformAcornAst(prop as Node) as JsonPropertyNode,
-			),
-			loc: node.loc!,
-		} as JsonObjectNode;
-	} else if (node.type === "ArrayExpression") {
-		return {
-			type: "ArrayExpression",
-			elements: node.elements
-				.map((elem) =>
-					elem ? (transformAcornAst(elem as Node) as JsonValueNode) : null,
-				)
-				.filter(Boolean),
-			loc: node.loc!,
-		} as JsonArrayNode;
-	} else if (node.type === "Property") {
-		const prop = node as unknown as Property;
-		return {
-			type: "Property",
-			key: transformAcornAst(prop.key as Node) as JsonStringNode,
-			value: transformAcornAst(prop.value as Node) as JsonValueNode,
-			kind: prop.kind,
-			method: prop.method,
-			shorthand: prop.shorthand,
-			computed: prop.computed,
-			loc: node.loc!,
-		} as JsonPropertyNode;
-	} else if (node.type === "Literal") {
-		const literal = node as unknown as Literal;
-		if (typeof literal.value === "string") {
+	switch (node.type) {
+		case "ObjectExpression": {
 			return {
-				type: "Literal",
-				value: literal.value,
-				raw: literal.raw || `"${literal.value}"`,
+				type: "ObjectExpression",
+				properties: node.properties.map(
+					(prop) => transformAcornAst(prop as Node) as JsonPropertyNode,
+				),
 				loc: node.loc!,
-			} as JsonStringNode;
-		} else if (typeof literal.value === "number") {
+			} as JsonObjectNode;
+		}
+		
+		case "ArrayExpression": {
 			return {
-				type: "Literal",
-				value: literal.value,
-				raw: literal.raw || String(literal.value),
+				type: "ArrayExpression",
+				elements: node.elements
+					.map((elem) =>
+						elem ? (transformAcornAst(elem as Node) as JsonValueNode) : null,
+					)
+					.filter(Boolean),
 				loc: node.loc!,
-			} as JsonNumberNode;
-		} else if (typeof literal.value === "boolean") {
+			} as JsonArrayNode;
+		}
+		
+		case "Property": {
+			const prop = node as unknown as Property;
 			return {
-				type: "Literal",
-				value: literal.value,
-				raw: literal.raw || String(literal.value),
+				type: "Property",
+				key: transformAcornAst(prop.key as Node) as JsonStringNode,
+				value: transformAcornAst(prop.value as Node) as JsonValueNode,
+				kind: prop.kind,
+				method: prop.method,
+				shorthand: prop.shorthand,
+				computed: prop.computed,
 				loc: node.loc!,
-			} as JsonBooleanNode;
-		} else if (literal.value === null) {
-			return {
-				type: "Literal",
-				value: null,
-				raw: "null",
-				loc: node.loc!,
-			} as JsonNullNode;
+			} as JsonPropertyNode;
+		}
+		
+		case "Literal": {
+			const literal = node as unknown as Literal;
+			
+			switch (typeof literal.value) {
+				case "string":
+					return {
+						type: "Literal",
+						value: literal.value,
+						raw: literal.raw || `"${literal.value}"`,
+						loc: node.loc!,
+					} as JsonStringNode;
+					
+				case "number":
+					return {
+						type: "Literal",
+						value: literal.value,
+						raw: literal.raw || String(literal.value),
+						loc: node.loc!,
+					} as JsonNumberNode;
+					
+				case "boolean":
+					return {
+						type: "Literal",
+						value: literal.value,
+						raw: literal.raw || String(literal.value),
+						loc: node.loc!,
+					} as JsonBooleanNode;
+					
+				case "object":
+					if (literal.value === null) {
+						return {
+							type: "Literal",
+							value: null,
+							raw: "null",
+							loc: node.loc!,
+						} as JsonNullNode;
+					}
+					break;
+			}
+			break;
 		}
 	}
 
