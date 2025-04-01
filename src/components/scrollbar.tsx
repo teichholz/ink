@@ -1,4 +1,5 @@
 import chalk, {ColorName} from 'chalk';
+import figures from 'figures';
 import {Box, Text} from 'ink';
 
 // chalk type is a little restrictive, so we loosen it up here and ensure that the passed in properties are valid
@@ -32,12 +33,12 @@ type ScrollbarProps = {
 	/**
 	 * Character to use for the scrollbar thumb
 	 */
-	thumbChar?: string;
+	thumbChar?: keyof typeof figures;
 
 	/**
 	 * Character to use for the scrollbar track
 	 */
-	trackChar?: string;
+	trackChar?: keyof typeof figures;
 
 	/**
 	 * Color of the scrollbar thumb
@@ -55,8 +56,8 @@ export default function Scrollbar({
 	visibleItems,
 	scrollOffset,
 	width = 1,
-	thumbChar = '█',
-	trackChar = '│',
+	thumbChar = 'lineVerticalBold',
+	trackChar = 'lineVertical',
 	thumbColor = 'blue',
 	trackColor = 'gray',
 }: ScrollbarProps) {
@@ -87,8 +88,8 @@ export default function Scrollbar({
 				return (
 					<Text key={index}>
 						{isScrollbarElement
-							? chalk[thumbColor](thumbChar)
-							: chalk[trackColor](trackChar)}
+							? chalk[thumbColor](figures[thumbChar])
+							: chalk[trackColor](figures[trackChar])}
 					</Text>
 				);
 			})}
