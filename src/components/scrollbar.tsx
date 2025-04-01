@@ -1,6 +1,12 @@
-import chalk from 'chalk';
+import chalk, {ColorName} from 'chalk';
 import {Box, Text} from 'ink';
-import React from 'react';
+
+// chalk type is a little restrictive, so we loosen it up here and ensure that the passed in properties are valid
+declare module 'chalk' {
+	interface ChalkInstance {
+		[color: string]: this;
+	}
+}
 
 type ScrollbarProps = {
 	/**
@@ -36,12 +42,12 @@ type ScrollbarProps = {
 	/**
 	 * Color of the scrollbar thumb
 	 */
-	thumbColor?: string;
+	thumbColor?: ColorName;
 
 	/**
 	 * Color of the scrollbar track
 	 */
-	trackColor?: string;
+	trackColor?: ColorName;
 };
 
 export default function Scrollbar({
@@ -64,10 +70,10 @@ export default function Scrollbar({
 		1,
 		Math.floor((visibleItems * visibleItems) / totalItems),
 	);
-	
+
 	const maxScrollOffset = Math.max(0, totalItems - visibleItems);
 	const scrollRatio = maxScrollOffset > 0 ? scrollOffset / maxScrollOffset : 0;
-	
+
 	const scrollbarStart = Math.floor(
 		scrollRatio * (visibleItems - scrollbarHeight),
 	);

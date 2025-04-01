@@ -4,7 +4,11 @@ import Fuse from 'fuse.js';
 import {Box, DOMElement, measureElement, Text} from 'ink';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import type {Simplify} from 'type-fest';
-import {createKeyCombo, useKeybindings} from '../hooks/useKeybindings.js';
+import {
+	createKeyCombo,
+	Keybinding,
+	useKeybindings,
+} from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
 import {logger} from '../logger.js';
 import Scrollbar from './scrollbar.js';
@@ -131,7 +135,7 @@ export default function Filter<T extends FilterItem>({
 	}, [filteredItems]);
 
 	// Define keybindings using our custom hook
-	const keybindings = useMemo(
+	const keybindings: Keybinding[] = useMemo<Keybinding[]>(
 		() => [
 			{
 				key: createKeyCombo('n', ['ctrl']),
@@ -142,7 +146,6 @@ export default function Filter<T extends FilterItem>({
 						return newIndex;
 					});
 				},
-				requiresFocus: true,
 				showInHelp: true,
 			},
 			{
@@ -154,7 +157,6 @@ export default function Filter<T extends FilterItem>({
 						return newIndex;
 					});
 				},
-				requiresFocus: true,
 				showInHelp: true,
 			},
 		],
