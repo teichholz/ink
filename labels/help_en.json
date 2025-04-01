@@ -10,6 +10,10 @@
 		"help_subcmd_param": "Shows the help for a subcommand and its parameters.",
 		"help_subcmd_param_param": "Shows the help for a subcommand and its parameters and parameters.",
 		"help_topic": "Shows the help for a topic.",
-		"help_topic_cmd": "Shows the help for a topic and its commands."
+		"help_topic_cmd": "Shows the help for a topic and its commands.",
+		"complex": {
+			"help_topic_cmd": "Shows the help for a topic and its commands.",
+			"help_topic_cmd_param": "Shows the help for a topic, its commands and its parameters."
+		}
 	}
 }

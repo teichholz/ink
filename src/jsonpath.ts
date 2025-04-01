@@ -28,51 +28,51 @@ export function getJsonPath(
 
 type ValueModification = boolean | number | string;
 
-class JsonModification {
-	private _path: UpdatePath;
-	private _update: ValueModification;
+// class JsonModification {
+// 	private _path: UpdatePath;
+// 	private _update: ValueModification;
+//
+// 	constructor(path: UpdatePath, update: ValueModification) {
+// 		this._path = path;
+// 		this._update = update;
+// 	}
+//
+// 	get path(): UpdatePath {
+// 		return this._path;
+// 	}
+//
+// 	get update(): ValueModification {
+// 		return this._update;
+// 	}
+// }
 
-	constructor(path: UpdatePath, update: ValueModification) {
-		this._path = path;
-		this._update = update;
-	}
-
-	get path(): UpdatePath {
-		return this._path;
-	}
-
-	get update(): ValueModification {
-		return this._update;
-	}
-}
-
-class JsonModifications {
-	private _json: JSONValue;
-	private _modifications: JsonModification[];
-
-	constructor(json: JSONValue) {
-		this._json = json;
-		this._modifications = [];
-	}
-
-	add(path: UpdatePath, update: ValueModification): void {
-		this._modifications.push(new JsonModification(path, update));
-	}
-
-	apply(): void {
-		for (const modification of this._modifications) {
-			modifyJson(this._json, modification.update, modification.path);
-		}
-	}
-
-	get json(): JSONValue {
-		return this._json;
-	}
-
-	get modifications(): JsonModification[] {
-		return this._modifications;
-	}
-}
+// class JsonModifications {
+// 	private _json: JSONValue;
+// 	private _modifications: JsonModification[];
+//
+// 	constructor(json: JSONValue) {
+// 		this._json = json;
+// 		this._modifications = [];
+// 	}
+//
+// 	add(path: UpdatePath, update: ValueModification): void {
+// 		this._modifications.push(new JsonModification(path, update));
+// 	}
+//
+// 	apply(): void {
+// 		for (const modification of this._modifications) {
+// 			modifyJson(this._json, modification.update, modification.path);
+// 		}
+// 	}
+//
+// 	get json(): JSONValue {
+// 		return this._json;
+// 	}
+//
+// 	get modifications(): JsonModification[] {
+// 		return this._modifications;
+// 	}
+// }
 
 export function modifyJson(
 	json: JSONValue,

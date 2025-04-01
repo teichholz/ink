@@ -1,12 +1,15 @@
 import type {
+	ArrayExpression,
 	Expression,
 	Literal,
 	Node,
+	ObjectExpression,
 	Program,
 	Property,
 	VariableDeclaration,
 } from "acorn";
 import { parse } from "acorn";
+import chalk from "chalk";
 
 /**
  * Position information for a node in the JSON AST
@@ -36,7 +39,7 @@ export interface JsonNode {
  * JSON string value node
  */
 export interface JsonStringNode extends JsonNode {
-	type: "Literal";
+	type: "String";
 	value: string;
 	raw: string;
 }
@@ -45,7 +48,7 @@ export interface JsonStringNode extends JsonNode {
  * JSON number value node
  */
 export interface JsonNumberNode extends JsonNode {
-	type: "Literal";
+	type: "Number";
 	value: number;
 	raw: string;
 }
@@ -54,7 +57,7 @@ export interface JsonNumberNode extends JsonNode {
  * JSON boolean value node
  */
 export interface JsonBooleanNode extends JsonNode {
-	type: "Literal";
+	type: "Boolean";
 	value: boolean;
 	raw: string;
 }
@@ -63,7 +66,7 @@ export interface JsonBooleanNode extends JsonNode {
  * JSON null value node
  */
 export interface JsonNullNode extends JsonNode {
-	type: "Literal";
+	type: "Null";
 	value: null;
 	raw: string;
 }
@@ -85,7 +88,7 @@ export interface JsonPropertyNode extends JsonNode {
  * JSON object node
  */
 export interface JsonObjectNode extends JsonNode {
-	type: "ObjectExpression";
+	type: "Object";
 	properties: JsonPropertyNode[];
 }
 
@@ -93,7 +96,7 @@ export interface JsonObjectNode extends JsonNode {
  * JSON array node
  */
 export interface JsonArrayNode extends JsonNode {
-	type: "ArrayExpression";
+	type: "Array";
 	elements: JsonValueNode[];
 }
 
@@ -140,23 +143,23 @@ export function transformAcornAst(node: Node): JsonNode {
 	switch (node.type) {
 		case "ObjectExpression": {
 			return {
-				type: "ObjectExpression",
-				properties: node.properties.map(
+				type: "Object",
+				properties: (node as unknown as ObjectExpression).properties.map(
 					(prop) => transformAcornAst(prop as Node) as JsonPropertyNode,
 				),
-				loc: node.loc!,
+				loc: node.loc,
 			} as JsonObjectNode;
 		}
 
 		case "ArrayExpression": {
 			return {
-				type: "ArrayExpression",
-				elements: node.elements
+				type: "Array",
+				elements: (node as unknown as ArrayExpression).elements
 					.map((elem) =>
 						elem ? (transformAcornAst(elem as Node) as JsonValueNode) : null,
 					)
 					.filter(Boolean),
-				loc: node.loc!,
+				loc: node.loc,
 			} as JsonArrayNode;
 		}
 
@@ -170,7 +173,7 @@ export function transformAcornAst(node: Node): JsonNode {
 				method: prop.method,
 				shorthand: prop.shorthand,
 				computed: prop.computed,
-				loc: node.loc!,
+				loc: node.loc,
 			} as JsonPropertyNode;
 		}
 
@@ -180,35 +183,35 @@ export function transformAcornAst(node: Node): JsonNode {
 			switch (typeof literal.value) {
 				case "string":
 					return {
-						type: "Literal",
+						type: "String",
 						value: literal.value,
 						raw: literal.raw || `"${literal.value}"`,
-						loc: node.loc!,
+						loc: node.loc,
 					} as JsonStringNode;
 
 				case "number":
 					return {
-						type: "Literal",
+						type: "Number",
 						value: literal.value,
 						raw: literal.raw || String(literal.value),
-						loc: node.loc!,
+						loc: node.loc,
 					} as JsonNumberNode;
 
 				case "boolean":
 					return {
-						type: "Literal",
+						type: "Boolean",
 						value: literal.value,
 						raw: literal.raw || String(literal.value),
-						loc: node.loc!,
+						loc: node.loc,
 					} as JsonBooleanNode;
 
 				case "object":
 					if (literal.value === null) {
 						return {
-							type: "Literal",
+							type: "Null",
 							value: null,
 							raw: "null",
-							loc: node.loc!,
+							loc: node.loc,
 						} as JsonNullNode;
 					}
 					break;
@@ -219,3 +222,19 @@ export function transformAcornAst(node: Node): JsonNode {
 
 	throw new Error(`Unsupported node type: ${node.type}`);
 }
+
+const SyntaxHighlighting = {
+	PROPERTY: chalk.blue,
+	STRING: chalk.green,
+	NUMBER: chalk.yellow,
+	BOOLEAN: chalk.yellow,
+	NULL: chalk.red,
+	ARRAY: chalk.grey,
+	OBJECT: chalk.grey,
+};
+
+export function highlight(
+	node: JsonNode,
+	depth = 0,
+	syntax: typeof SyntaxHighlighting = SyntaxHighlighting,
+) {}
