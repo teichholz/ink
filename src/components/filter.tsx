@@ -7,6 +7,7 @@ import type {Simplify} from 'type-fest';
 import {createKeyCombo, useKeybindings} from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
 import {logger} from '../logger.js';
+import Scrollbar from './scrollbar.js';
 
 export type FilterItem = {
 	id: string;
@@ -233,32 +234,11 @@ export default function Filter<T extends FilterItem>({
 					)}
 				</Box>
 
-				{filteredItems.length > availableHeight && (
-					<Box flexDirection="column" width={1} marginLeft={1}>
-						{Array.from({length: availableHeight}).map((_, index) => {
-							// Calculate if this position should show a scrollbar element
-							const totalItems = filteredItems.length;
-							const scrollbarHeight = Math.max(
-								1,
-								Math.floor((availableHeight * availableHeight) / totalItems),
-							);
-							const scrollbarStart = Math.floor(
-								(scrollOffset / (totalItems - availableHeight)) *
-									(availableHeight - scrollbarHeight),
-							);
-
-							const isScrollbarElement =
-								index >= scrollbarStart &&
-								index < scrollbarStart + scrollbarHeight;
-
-							return (
-								<Text key={index}>
-									{isScrollbarElement ? chalk.blue('█') : chalk.gray('│')}
-								</Text>
-							);
-						})}
-					</Box>
-				)}
+				<Scrollbar
+					totalItems={filteredItems.length}
+					visibleItems={availableHeight}
+					scrollOffset={scrollOffset}
+				/>
 			</Box>
 		</Box>
 	);
