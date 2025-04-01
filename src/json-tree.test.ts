@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { JsonObjectNode, JsonPropertyNode, JsonStringNode, parseJson } from "./json-tree.js";
+import {
+	JsonObjectNode,
+	JsonPropertyNode,
+	JsonStringNode,
+	parseJson,
+} from "./json-tree.js";
 
 describe("Json Tree", () => {
 	describe("parseJson function", () => {
@@ -14,6 +19,8 @@ describe("Json Tree", () => {
 			}`;
 
 			const ast = parseJson(json);
+
+			console.log(JSON.stringify(ast, null, 2));
 
 			// Verify the AST contains the expected properties
 			expect(ast.type).toBe("ObjectExpression");
@@ -35,7 +42,7 @@ describe("Json Tree", () => {
 			expect(ast.loc.start.column).toBeGreaterThanOrEqual(0);
 			expect(ast.loc.end.line).toBeGreaterThan(0);
 			expect(ast.loc.end.column).toBeGreaterThan(0);
-			
+
 			// Check property locations
 			expect(firstProp.loc).toBeDefined();
 			expect(firstProp.loc.start.line).toBeGreaterThan(0);
