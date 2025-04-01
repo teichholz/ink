@@ -3,6 +3,7 @@ import {Box, Text, useFocusManager} from 'ink';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
+import {JsonEditor} from './components/json-editor.js';
 import {useNotification} from './components/notification.js';
 import {FilePreview, LabelPreview} from './components/preview.js';
 import {Config} from './config.js';
@@ -281,6 +282,8 @@ function AppContent({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column">
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
+					) : selectedFile && selectedFile.paths.size > 0 ? (
+						<JsonEditor filePath={Array.from(selectedFile.paths)[0]} />
 					) : (
 						<FilePreview file={selectedFile} />
 					)}
