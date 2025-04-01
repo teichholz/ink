@@ -29,32 +29,36 @@ export interface JsonNode {
  * JSON string value node
  */
 export interface JsonStringNode extends JsonNode {
-  type: "StringLiteral";
+  type: "Literal";
   value: string;
+  raw: string;
 }
 
 /**
  * JSON number value node
  */
 export interface JsonNumberNode extends JsonNode {
-  type: "NumericLiteral";
+  type: "Literal";
   value: number;
+  raw: string;
 }
 
 /**
  * JSON boolean value node
  */
 export interface JsonBooleanNode extends JsonNode {
-  type: "BooleanLiteral";
+  type: "Literal";
   value: boolean;
+  raw: string;
 }
 
 /**
  * JSON null value node
  */
 export interface JsonNullNode extends JsonNode {
-  type: "NullLiteral";
+  type: "Literal";
   value: null;
+  raw: string;
 }
 
 /**
@@ -64,6 +68,10 @@ export interface JsonPropertyNode extends JsonNode {
   type: "Property";
   key: JsonStringNode;
   value: JsonValueNode;
+  kind: "init";
+  method: boolean;
+  shorthand: boolean;
+  computed: boolean;
 }
 
 /**

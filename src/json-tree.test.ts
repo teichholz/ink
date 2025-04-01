@@ -20,8 +20,6 @@ describe("Json Tree", () => {
 
 			const ast = parseJson(json);
 
-			console.log(JSON.stringify(ast, null, 2));
-
 			// Verify the AST contains the expected properties
 			expect(ast.type).toBe("ObjectExpression");
 			expect(ast.properties).toHaveLength(2);
@@ -30,6 +28,17 @@ describe("Json Tree", () => {
 			const firstProp = ast.properties[0] as JsonPropertyNode;
 			expect((firstProp.key as JsonStringNode).value).toBe("hello");
 			expect((firstProp.value as JsonStringNode).value).toBe("world");
+			
+			// Check property structure
+			expect(firstProp.kind).toBe("init");
+			expect(firstProp.method).toBe(false);
+			expect(firstProp.shorthand).toBe(false);
+			expect(firstProp.computed).toBe(false);
+			
+			// Check literal structure
+			expect((firstProp.key as JsonStringNode).type).toBe("Literal");
+			expect((firstProp.key as JsonStringNode).raw).toBe('"hello"');
+			expect((firstProp.value as JsonStringNode).raw).toBe('"world"');
 
 			// Check the second property
 			const secondProp = ast.properties[1] as JsonPropertyNode;
