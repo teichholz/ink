@@ -1,5 +1,5 @@
-import type { VariableDeclaration } from "acorn";
-import { type ObjectExpression, parse } from "acorn";
+import type { Node, VariableDeclaration, Program, Expression, Literal, Property } from "acorn";
+import { parse } from "acorn";
 
 /**
  * Position information for a node in the JSON AST
@@ -117,10 +117,75 @@ export function parseJson(json: string): JsonObjectNode {
 
   // Extract the object literal node from the variable declaration
   // The AST structure is: Program > VariableDeclaration > VariableDeclarator > ObjectExpression
-  const program = ast;
+  const program = ast as Program;
   const variableDeclaration = program.body[0] as VariableDeclaration;
   const variableDeclarator = variableDeclaration.declarations[0];
-  const objectExpression = variableDeclarator.init;
+  const objectExpression = variableDeclarator.init as Expression;
 
   return objectExpression as unknown as JsonObjectNode;
+}
+
+/**
+ * Transforms an Acorn AST node into our simplified JSON AST format
+ * This could be used if we need to transform the AST further
+ */
+export function transformAcornAst(node: Node): JsonNode {
+  if (node.type === "ObjectExpression") {
+    return {
+      type: "ObjectExpression",
+      properties: node.properties.map(prop => transformAcornAst(prop as Node) as JsonPropertyNode),
+      loc: node.loc!
+    } as JsonObjectNode;
+  } else if (node.type === "ArrayExpression") {
+    return {
+      type: "ArrayExpression",
+      elements: node.elements.map(elem => elem ? transformAcornAst(elem as Node) as JsonValueNode : null).filter(Boolean),
+      loc: node.loc!
+    } as JsonArrayNode;
+  } else if (node.type === "Property") {
+    const prop = node as unknown as Property;
+    return {
+      type: "Property",
+      key: transformAcornAst(prop.key as Node) as JsonStringNode,
+      value: transformAcornAst(prop.value as Node) as JsonValueNode,
+      kind: prop.kind,
+      method: prop.method,
+      shorthand: prop.shorthand,
+      computed: prop.computed,
+      loc: node.loc!
+    } as JsonPropertyNode;
+  } else if (node.type === "Literal") {
+    const literal = node as unknown as Literal;
+    if (typeof literal.value === "string") {
+      return {
+        type: "Literal",
+        value: literal.value,
+        raw: literal.raw || `"${literal.value}"`,
+        loc: node.loc!
+      } as JsonStringNode;
+    } else if (typeof literal.value === "number") {
+      return {
+        type: "Literal",
+        value: literal.value,
+        raw: literal.raw || String(literal.value),
+        loc: node.loc!
+      } as JsonNumberNode;
+    } else if (typeof literal.value === "boolean") {
+      return {
+        type: "Literal",
+        value: literal.value,
+        raw: literal.raw || String(literal.value),
+        loc: node.loc!
+      } as JsonBooleanNode;
+    } else if (literal.value === null) {
+      return {
+        type: "Literal",
+        value: null,
+        raw: "null",
+        loc: node.loc!
+      } as JsonNullNode;
+    }
+  }
+  
+  throw new Error(`Unsupported node type: ${node.type}`);
 }
