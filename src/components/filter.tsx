@@ -208,8 +208,10 @@ export default function Filter<T extends FilterItem>({
 						onChange={setText}
 					/>
 				</Text>
-				<Box marginLeft={1}>
-					<Text>{chalk.yellow(`(${filteredItems.length} / ${items.length})`)}</Text>
+				<Box flexGrow={1} flexDirection="row-reverse" alignItems="flex-end">
+					<Text>
+						{chalk.yellow(`(${filteredItems.length} / ${items.length})`)}
+					</Text>
 				</Box>
 			</Box>
 			<Box flexDirection="row">
