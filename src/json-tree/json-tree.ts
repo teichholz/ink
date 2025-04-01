@@ -1,10 +1,10 @@
 import type {
-	Node,
-	VariableDeclaration,
-	Program,
 	Expression,
 	Literal,
+	Node,
+	Program,
 	Property,
+	VariableDeclaration,
 } from "acorn";
 import { parse } from "acorn";
 
@@ -147,7 +147,7 @@ export function transformAcornAst(node: Node): JsonNode {
 				loc: node.loc!,
 			} as JsonObjectNode;
 		}
-		
+
 		case "ArrayExpression": {
 			return {
 				type: "ArrayExpression",
@@ -159,7 +159,7 @@ export function transformAcornAst(node: Node): JsonNode {
 				loc: node.loc!,
 			} as JsonArrayNode;
 		}
-		
+
 		case "Property": {
 			const prop = node as unknown as Property;
 			return {
@@ -173,10 +173,10 @@ export function transformAcornAst(node: Node): JsonNode {
 				loc: node.loc!,
 			} as JsonPropertyNode;
 		}
-		
+
 		case "Literal": {
 			const literal = node as unknown as Literal;
-			
+
 			switch (typeof literal.value) {
 				case "string":
 					return {
@@ -185,7 +185,7 @@ export function transformAcornAst(node: Node): JsonNode {
 						raw: literal.raw || `"${literal.value}"`,
 						loc: node.loc!,
 					} as JsonStringNode;
-					
+
 				case "number":
 					return {
 						type: "Literal",
@@ -193,7 +193,7 @@ export function transformAcornAst(node: Node): JsonNode {
 						raw: literal.raw || String(literal.value),
 						loc: node.loc!,
 					} as JsonNumberNode;
-					
+
 				case "boolean":
 					return {
 						type: "Literal",
@@ -201,7 +201,7 @@ export function transformAcornAst(node: Node): JsonNode {
 						raw: literal.raw || String(literal.value),
 						loc: node.loc!,
 					} as JsonBooleanNode;
-					
+
 				case "object":
 					if (literal.value === null) {
 						return {
