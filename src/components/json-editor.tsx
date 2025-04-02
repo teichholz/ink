@@ -2,7 +2,7 @@ import {Box, Text} from 'ink';
 import {useEffect, useState} from 'react';
 import fs from 'fs/promises';
 import path from 'path';
-import {parseJson, JsonValueNode} from '../json-tree/json-tree.js';
+import {parseJson, JsonValueNode, stringify} from '../json-tree/json-tree.js';
 
 type JsonEditorProps = {
 	/**
@@ -27,11 +27,11 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 
 			try {
 				const fileContent = await fs.readFile(filePath, 'utf-8');
-				setContent(fileContent);
 
 				try {
 					const parsedJson = parseJson(fileContent);
 					setJsonTree(parsedJson as JsonValueNode);
+					setContent(stringify(parsedJson));
 					setError(null);
 				} catch (parseError) {
 					setJsonTree(null);

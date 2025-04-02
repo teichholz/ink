@@ -270,13 +270,13 @@ export function stringify(
 	syntax: typeof SyntaxHighlighting = SyntaxHighlighting,
 ): string {
 	const indent = "  ".repeat(depth);
-	const childIndent = "  ".repeat(depth + 1);
 
 	if (isObjectNode(node)) {
 		if (node.properties.length === 0) {
 			return syntax.OBJECT("{}");
 		}
 
+		const childIndent = "  ".repeat(depth + 1);
 		const properties = node.properties
 			.map((prop) => {
 				const key = syntax.PROPERTY(prop.key.raw);
@@ -293,6 +293,7 @@ export function stringify(
 			return syntax.ARRAY("[]");
 		}
 
+		const childIndent = "  ".repeat(depth + 1);
 		const elements = node.elements
 			.map((elem) => `${childIndent}${stringify(elem, depth + 1, syntax)}`)
 			.join(",\n");
