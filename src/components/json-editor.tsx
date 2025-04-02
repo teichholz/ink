@@ -1,8 +1,9 @@
-import {Box, Text} from 'ink';
+import {Box, Text, useInput} from 'ink';
 import {useEffect, useState} from 'react';
 import fs from 'fs/promises';
 import path from 'path';
 import {parseJson, JsonValueNode, stringify} from '../json-tree/json-tree.js';
+import {useJsonCursor} from '../hooks/useJsonCursor.js';
 
 type JsonEditorProps = {
 	/**
@@ -13,8 +14,25 @@ type JsonEditorProps = {
 
 export function JsonEditor({filePath}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
-	const [_jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
+	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
+	
+	// Use the JSON cursor hook
+	const {
+		updateNavigableNodes,
+		moveCursorUp,
+		moveCursorDown,
+		isNodeAtCursor
+	} = useJsonCursor(jsonTree);
+	
+	// Handle keyboard input
+	useInput((input, key) => {
+		if (input === 'j') {
+			moveCursorDown();
+		} else if (input === 'k') {
+			moveCursorUp();
+		}
+	});
 
 	useEffect(() => {
 		const loadFile = async () => {
@@ -31,7 +49,12 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 				try {
 					const parsedJson = parseJson(fileContent);
 					setJsonTree(parsedJson as JsonValueNode);
-					setContent(stringify(parsedJson));
+					
+					// Format the JSON with syntax highlighting
+					setContent(stringify(parsedJson, {
+						highlightNode: isNodeAtCursor
+					}));
+					
 					setError(null);
 				} catch (parseError) {
 					setJsonTree(null);
@@ -52,6 +75,22 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 
 		loadFile();
 	}, [filePath]);
+	
+	// Initialize navigable nodes when JSON tree changes
+	useEffect(() => {
+		if (jsonTree) {
+			updateNavigableNodes();
+		}
+	}, [jsonTree, updateNavigableNodes]);
+	
+	// Update content when cursor position changes
+	useEffect(() => {
+		if (jsonTree) {
+			setContent(stringify(jsonTree, {
+				highlightNode: isNodeAtCursor
+			}));
+		}
+	}, [jsonTree, isNodeAtCursor]);
 
 	if (error) {
 		return (
@@ -81,6 +120,7 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 	return (
 		<Box flexDirection="column" padding={0}>
 			<Text>Editing: {path.basename(filePath)}</Text>
+			<Text>Use j/k to navigate</Text>
 			<Box marginTop={1} flexDirection="column">
 				{content.split('\n').map((line, index) => (
 					<Text key={index}>{line.replaceAll('\t', '  ')}</Text>

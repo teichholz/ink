@@ -236,91 +236,133 @@ const SyntaxHighlighting = {
 /**
  * Type guards to help TypeScript infer the correct types
  */
-function isObjectNode(node: JsonNode): node is JsonObjectNode {
+export function isObjectNode(node: JsonNode): node is JsonObjectNode {
 	return node.type === "Object";
 }
 
-function isArrayNode(node: JsonNode): node is JsonArrayNode {
+export function isArrayNode(node: JsonNode): node is JsonArrayNode {
 	return node.type === "Array";
 }
 
-function isPropertyNode(node: JsonNode): node is JsonPropertyNode {
+export function isPropertyNode(node: JsonNode): node is JsonPropertyNode {
 	return node.type === "Property";
 }
 
-function isStringNode(node: JsonNode): node is JsonStringNode {
+export function isStringNode(node: JsonNode): node is JsonStringNode {
 	return node.type === "String";
 }
 
-function isNumberNode(node: JsonNode): node is JsonNumberNode {
+export function isNumberNode(node: JsonNode): node is JsonNumberNode {
 	return node.type === "Number";
 }
 
-function isBooleanNode(node: JsonNode): node is JsonBooleanNode {
+export function isBooleanNode(node: JsonNode): node is JsonBooleanNode {
 	return node.type === "Boolean";
 }
 
-function isNullNode(node: JsonNode): node is JsonNullNode {
+export function isNullNode(node: JsonNode): node is JsonNullNode {
 	return node.type === "Null";
 }
 
+export type StringifyOptions = {
+	depth?: number;
+	syntax?: typeof SyntaxHighlighting;
+	highlightNode?: (node: JsonNode) => boolean;
+};
+
 export function stringify(
 	node: JsonNode,
-	depth = 0,
-	syntax: typeof SyntaxHighlighting = SyntaxHighlighting,
+	options: StringifyOptions = {}
 ): string {
+	const { 
+		depth = 0, 
+		syntax = SyntaxHighlighting,
+		highlightNode = () => false
+	} = options;
+	
 	const indent = "  ".repeat(depth);
+	const isHighlighted = highlightNode(node);
+	
+	// Helper to apply highlighting if needed
+	const applyHighlight = (text: string) => {
+		return isHighlighted ? chalk.bgGray(text) : text;
+	};
 
 	if (isObjectNode(node)) {
 		if (node.properties.length === 0) {
-			return syntax.OBJECT("{}");
+			return applyHighlight(syntax.OBJECT("{}"));
 		}
 
 		const childIndent = "  ".repeat(depth + 1);
 		const properties = node.properties
 			.map((prop) => {
 				const key = syntax.PROPERTY(prop.key.raw);
-				const value = stringify(prop.value, depth + 1, syntax);
-				return `${childIndent}${key}: ${value}`;
+				const value = stringify(prop.value, {
+					depth: depth + 1,
+					syntax,
+					highlightNode
+				});
+				
+				// If the property node is highlighted, highlight just the key
+				const propHighlighted = highlightNode(prop);
+				const formattedKey = propHighlighted ? chalk.bgGray(key) : key;
+				
+				return `${childIndent}${formattedKey}: ${value}`;
 			})
 			.join(",\n");
 
-		return `${syntax.OBJECT("{\n")}${properties}\n${indent}${syntax.OBJECT("}")}`;
+		const openBrace = syntax.OBJECT("{\n");
+		const closeBrace = `\n${indent}${syntax.OBJECT("}")}`;
+		
+		return applyHighlight(openBrace) + properties + applyHighlight(closeBrace);
 	}
 
 	if (isArrayNode(node)) {
 		if (node.elements.length === 0) {
-			return syntax.ARRAY("[]");
+			return applyHighlight(syntax.ARRAY("[]"));
 		}
 
 		const childIndent = "  ".repeat(depth + 1);
 		const elements = node.elements
-			.map((elem) => `${childIndent}${stringify(elem, depth + 1, syntax)}`)
+			.map((elem) => `${childIndent}${stringify(elem, {
+				depth: depth + 1,
+				syntax,
+				highlightNode
+			})}`)
 			.join(",\n");
 
-		return `${syntax.ARRAY("[\n")}${elements}\n${indent}${syntax.ARRAY("]")}`;
+		const openBracket = syntax.ARRAY("[\n");
+		const closeBracket = `\n${indent}${syntax.ARRAY("]")}`;
+		
+		return applyHighlight(openBracket) + elements + applyHighlight(closeBracket);
 	}
 
 	if (isPropertyNode(node)) {
 		const key = syntax.PROPERTY(node.key.raw);
-		const value = stringify(node.value, depth, syntax);
+		const value = stringify(node.value, {
+			depth,
+			syntax,
+			highlightNode
+		});
+		
+		// For property nodes, we highlight just the key in the parent's context
 		return `${key}: ${value}`;
 	}
 
 	if (isStringNode(node)) {
-		return syntax.STRING(node.raw);
+		return applyHighlight(syntax.STRING(node.raw));
 	}
 
 	if (isNumberNode(node)) {
-		return syntax.NUMBER(node.raw);
+		return applyHighlight(syntax.NUMBER(node.raw));
 	}
 
 	if (isBooleanNode(node)) {
-		return syntax.BOOLEAN(node.raw);
+		return applyHighlight(syntax.BOOLEAN(node.raw));
 	}
 
 	if (isNullNode(node)) {
-		return syntax.NULL(node.raw);
+		return applyHighlight(syntax.NULL(node.raw));
 	}
 
 	throw new Error(`Unsupported node type: ${node.type}`);
