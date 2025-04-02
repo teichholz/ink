@@ -233,6 +233,37 @@ const SyntaxHighlighting = {
 	OBJECT: chalk.grey,
 };
 
+/**
+ * Type guards to help TypeScript infer the correct types
+ */
+function isObjectNode(node: JsonNode): node is JsonObjectNode {
+	return node.type === "Object";
+}
+
+function isArrayNode(node: JsonNode): node is JsonArrayNode {
+	return node.type === "Array";
+}
+
+function isPropertyNode(node: JsonNode): node is JsonPropertyNode {
+	return node.type === "Property";
+}
+
+function isStringNode(node: JsonNode): node is JsonStringNode {
+	return node.type === "String";
+}
+
+function isNumberNode(node: JsonNode): node is JsonNumberNode {
+	return node.type === "Number";
+}
+
+function isBooleanNode(node: JsonNode): node is JsonBooleanNode {
+	return node.type === "Boolean";
+}
+
+function isNullNode(node: JsonNode): node is JsonNullNode {
+	return node.type === "Null";
+}
+
 export function stringify(
 	node: JsonNode,
 	depth = 0,
@@ -241,59 +272,55 @@ export function stringify(
 	const indent = "  ".repeat(depth);
 	const childIndent = "  ".repeat(depth + 1);
 
-	switch (node.type) {
-		case "Object": {
-			if (node.properties.length === 0) {
-				return syntax.OBJECT("{}");
-			}
-
-			const properties = node.properties
-				.map((prop) => {
-					const key = syntax.PROPERTY(prop.key.raw);
-					const value = stringify(prop.value, depth + 1, syntax);
-					return `${childIndent}${key}: ${value}`;
-				})
-				.join(",\n");
-
-			return `${syntax.OBJECT("{\n")}${properties}\n${indent}${syntax.OBJECT("}")}`;
+	if (isObjectNode(node)) {
+		if (node.properties.length === 0) {
+			return syntax.OBJECT("{}");
 		}
 
-		case "Array": {
-			if (node.elements.length === 0) {
-				return syntax.ARRAY("[]");
-			}
+		const properties = node.properties
+			.map((prop) => {
+				const key = syntax.PROPERTY(prop.key.raw);
+				const value = stringify(prop.value, depth + 1, syntax);
+				return `${childIndent}${key}: ${value}`;
+			})
+			.join(",\n");
 
-			const elements = node.elements
-				.map((elem) => `${childIndent}${stringify(elem, depth + 1, syntax)}`)
-				.join(",\n");
-
-			return `${syntax.ARRAY("[\n")}${elements}\n${indent}${syntax.ARRAY("]")}`;
-		}
-
-		case "Property": {
-			const key = syntax.PROPERTY(node.key.raw);
-			const value = stringify(node.value, depth, syntax);
-			return `${key}: ${value}`;
-		}
-
-		case "String": {
-			return syntax.STRING(node.raw);
-		}
-
-		case "Number": {
-			return syntax.NUMBER(node.raw);
-		}
-
-		case "Boolean": {
-			return syntax.BOOLEAN(node.raw);
-		}
-
-		case "Null": {
-			return syntax.NULL(node.raw);
-		}
-
-		default: {
-			throw new Error(`Unsupported node type: ${(node as JsonNode).type}`);
-		}
+		return `${syntax.OBJECT("{\n")}${properties}\n${indent}${syntax.OBJECT("}")}`;
 	}
+
+	if (isArrayNode(node)) {
+		if (node.elements.length === 0) {
+			return syntax.ARRAY("[]");
+		}
+
+		const elements = node.elements
+			.map((elem) => `${childIndent}${stringify(elem, depth + 1, syntax)}`)
+			.join(",\n");
+
+		return `${syntax.ARRAY("[\n")}${elements}\n${indent}${syntax.ARRAY("]")}`;
+	}
+
+	if (isPropertyNode(node)) {
+		const key = syntax.PROPERTY(node.key.raw);
+		const value = stringify(node.value, depth, syntax);
+		return `${key}: ${value}`;
+	}
+
+	if (isStringNode(node)) {
+		return syntax.STRING(node.raw);
+	}
+
+	if (isNumberNode(node)) {
+		return syntax.NUMBER(node.raw);
+	}
+
+	if (isBooleanNode(node)) {
+		return syntax.BOOLEAN(node.raw);
+	}
+
+	if (isNullNode(node)) {
+		return syntax.NULL(node.raw);
+	}
+
+	throw new Error(`Unsupported node type: ${node.type}`);
 }
