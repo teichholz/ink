@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import {Box, Text, useFocusManager} from 'ink';
+import {Box, Text, useFocusManager, useInput} from 'ink';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
@@ -87,6 +87,7 @@ function AppContent({tools, config}: Props) {
 	// Track selected items for preview
 	const [selectedLabel, setSelectedLabel] = useState<LabelInfo | null>(null);
 	const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
+	const [editMode, setEditMode] = useState<boolean>(false);
 
 	const [activeKeybindings] = useAtom(currentFocusedKeybindings);
 
@@ -190,6 +191,17 @@ function AppContent({tools, config}: Props) {
 		loadFilesAndLabels();
 	}, [tools, config]);
 
+	// Handle keyboard input for app-level navigation
+	useInput((input, key) => {
+		if (key.return && selectedFile && !editMode) {
+			// Enter edit mode when Enter is pressed on a file
+			setEditMode(true);
+		} else if (key.escape && editMode) {
+			// Exit edit mode when Escape is pressed
+			setEditMode(false);
+		}
+	});
+
 	useEffect(() => {
 		// Set initial focus
 		focusNext();
@@ -282,8 +294,11 @@ function AppContent({tools, config}: Props) {
 				<Box width="75%" borderStyle="round" flexDirection="column">
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
-					) : selectedFile && selectedFile.paths.size > 0 ? (
-						<JsonEditor filePath={Array.from(selectedFile.paths)[0]} />
+					) : selectedFile && selectedFile.paths.size > 0 && editMode ? (
+						<JsonEditor 
+							filePath={Array.from(selectedFile.paths)[0]} 
+							onExit={() => setEditMode(false)}
+						/>
 					) : (
 						<FilePreview file={selectedFile} />
 					)}

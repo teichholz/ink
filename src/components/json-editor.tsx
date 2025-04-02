@@ -10,9 +10,14 @@ type JsonEditorProps = {
 	 * Path to the JSON file to edit
 	 */
 	filePath: string | null;
+	
+	/**
+	 * Callback when exiting the editor
+	 */
+	onExit?: () => void;
 };
 
-export function JsonEditor({filePath}: JsonEditorProps) {
+export function JsonEditor({filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -22,11 +27,13 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 		useJsonCursor(jsonTree);
 
 	// Handle keyboard input
-	useInput((input, _key) => {
+	useInput((input, key) => {
 		if (input === 'j') {
 			moveCursorDown();
 		} else if (input === 'k') {
 			moveCursorUp();
+		} else if (key.escape && onExit) {
+			onExit();
 		}
 	});
 
@@ -120,7 +127,7 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 	return (
 		<Box flexDirection="column" padding={0}>
 			<Text>Editing: {path.basename(filePath)}</Text>
-			<Text>Use j/k to navigate</Text>
+			<Text>Use j/k to navigate, Esc to exit</Text>
 			<Box marginTop={1} flexDirection="column">
 				{content.split('\n').map((line, index) => (
 					<Text key={index}>{line}</Text>
