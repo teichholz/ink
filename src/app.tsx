@@ -1,6 +1,10 @@
 import chalk from 'chalk';
 import {Box, Text, useFocusManager} from 'ink';
-import {createKeyCombo, Keybinding} from './hooks/useKeybindings.js';
+import {
+	createKeyCombo,
+	Keybinding,
+	useKeybindings,
+} from './hooks/useKeybindings.js';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
@@ -196,21 +200,31 @@ function AppContent({tools, config}: Props) {
 	const appKeybindings = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: createKeyCombo('return'),
-				label: 'Edit selected file',
+				key: createKeyCombo('', ['return']),
+				label: 'Edit file',
 				action: () => {
-					if (selectedFile && !editMode) {
-						setEditMode(true);
-					}
+					logger.info('Entering edit mode');
+					setEditMode(true);
 				},
 				showInHelp: true,
+				requiresFocus: false,
+			},
+			{
+				key: createKeyCombo('', ['escape']),
+				label: 'Leave file',
+				action: () => {
+					logger.info('Leaving edit mode');
+					setEditMode(false);
+				},
+				showInHelp: true,
+				requiresFocus: false,
 			},
 		],
-		[selectedFile, editMode]
+		[],
 	);
 
 	// Use keybindings hook for app-level navigation
-	useKeybindings(appKeybindings, 'app-navigation');
+	useKeybindings(appKeybindings);
 
 	useEffect(() => {
 		// Set initial focus
@@ -305,10 +319,7 @@ function AppContent({tools, config}: Props) {
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
 					) : selectedFile && selectedFile.paths.size > 0 && editMode ? (
-						<JsonEditor
-							filePath={Array.from(selectedFile.paths)[0]}
-							onExit={() => setEditMode(false)}
-						/>
+						<JsonEditor filePath={Array.from(selectedFile.paths)[0]} />
 					) : (
 						<FilePreview file={selectedFile} />
 					)}
