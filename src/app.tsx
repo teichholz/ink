@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import {Box, Text, useFocusManager, useInput} from 'ink';
+import {Box, Text, useFocusManager} from 'ink';
+import {createKeyCombo, Keybinding} from './hooks/useKeybindings.js';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
@@ -191,16 +192,25 @@ function AppContent({tools, config}: Props) {
 		loadFilesAndLabels();
 	}, [tools, config]);
 
-	// Handle keyboard input for app-level navigation
-	useInput((input, key) => {
-		if (key.return && selectedFile && !editMode) {
-			// Enter edit mode when Enter is pressed on a file
-			setEditMode(true);
-		} else if (key.escape && editMode) {
-			// Exit edit mode when Escape is pressed
-			setEditMode(false);
-		}
-	});
+	// Define app-level keybindings
+	const appKeybindings = useMemo<Keybinding[]>(
+		() => [
+			{
+				key: createKeyCombo('return'),
+				label: 'Edit selected file',
+				action: () => {
+					if (selectedFile && !editMode) {
+						setEditMode(true);
+					}
+				},
+				showInHelp: true,
+			},
+		],
+		[selectedFile, editMode]
+	);
+
+	// Use keybindings hook for app-level navigation
+	useKeybindings(appKeybindings, 'app-navigation');
 
 	useEffect(() => {
 		// Set initial focus

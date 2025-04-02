@@ -1,9 +1,10 @@
 import fs from 'fs/promises';
-import {Box, Text, useInput} from 'ink';
+import {Box, Text} from 'ink';
 import path from 'path';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import {useJsonCursor} from '../hooks/useJsonCursor.js';
 import {JsonValueNode, parseJson, stringify} from '../json-tree/json-tree.js';
+import {createKeyCombo, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 
 type JsonEditorProps = {
 	/**
@@ -26,16 +27,35 @@ export function JsonEditor({filePath, onExit}: JsonEditorProps) {
 	const {updateNavigableNodes, moveCursorUp, moveCursorDown, isNodeAtCursor} =
 		useJsonCursor(jsonTree);
 
-	// Handle keyboard input
-	useInput((input, key) => {
-		if (input === 'j') {
-			moveCursorDown();
-		} else if (input === 'k') {
-			moveCursorUp();
-		} else if (key.escape && onExit) {
-			onExit();
-		}
-	});
+	// Define keybindings
+	const keybindings = useMemo<Keybinding[]>(
+		() => [
+			{
+				key: createKeyCombo('j'),
+				label: 'Move cursor down',
+				action: moveCursorDown,
+				showInHelp: true,
+			},
+			{
+				key: createKeyCombo('k'),
+				label: 'Move cursor up',
+				action: moveCursorUp,
+				showInHelp: true,
+			},
+			{
+				key: createKeyCombo('escape'),
+				label: 'Exit editor',
+				action: () => {
+					if (onExit) onExit();
+				},
+				showInHelp: true,
+			},
+		],
+		[moveCursorDown, moveCursorUp, onExit]
+	);
+
+	// Use keybindings hook
+	useKeybindings(keybindings, 'json-editor');
 
 	useEffect(() => {
 		const loadFile = async () => {
