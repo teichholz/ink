@@ -295,8 +295,8 @@ function AppContent({tools, config}: Props) {
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
 					) : selectedFile && selectedFile.paths.size > 0 && editMode ? (
-						<JsonEditor 
-							filePath={Array.from(selectedFile.paths)[0]} 
+						<JsonEditor
+							filePath={Array.from(selectedFile.paths)[0]}
 							onExit={() => setEditMode(false)}
 						/>
 					) : (

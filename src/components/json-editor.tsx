@@ -10,7 +10,7 @@ type JsonEditorProps = {
 	 * Path to the JSON file to edit
 	 */
 	filePath: string | null;
-	
+
 	/**
 	 * Callback when exiting the editor
 	 */
