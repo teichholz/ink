@@ -1,9 +1,9 @@
-import {Box, Text, useInput} from 'ink';
-import {useEffect, useState} from 'react';
 import fs from 'fs/promises';
+import {Box, Text, useInput} from 'ink';
 import path from 'path';
-import {parseJson, JsonValueNode, stringify} from '../json-tree/json-tree.js';
+import {useEffect, useState} from 'react';
 import {useJsonCursor} from '../hooks/useJsonCursor.js';
+import {JsonValueNode, parseJson, stringify} from '../json-tree/json-tree.js';
 
 type JsonEditorProps = {
 	/**
@@ -16,17 +16,13 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
-	
+
 	// Use the JSON cursor hook
-	const {
-		updateNavigableNodes,
-		moveCursorUp,
-		moveCursorDown,
-		isNodeAtCursor
-	} = useJsonCursor(jsonTree);
-	
+	const {updateNavigableNodes, moveCursorUp, moveCursorDown, isNodeAtCursor} =
+		useJsonCursor(jsonTree);
+
 	// Handle keyboard input
-	useInput((input, key) => {
+	useInput((input, _key) => {
 		if (input === 'j') {
 			moveCursorDown();
 		} else if (input === 'k') {
@@ -49,12 +45,14 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 				try {
 					const parsedJson = parseJson(fileContent);
 					setJsonTree(parsedJson as JsonValueNode);
-					
+
 					// Format the JSON with syntax highlighting
-					setContent(stringify(parsedJson, {
-						highlightNode: isNodeAtCursor
-					}));
-					
+					setContent(
+						stringify(parsedJson, {
+							highlightNode: isNodeAtCursor,
+						}),
+					);
+
 					setError(null);
 				} catch (parseError) {
 					setJsonTree(null);
@@ -75,20 +73,22 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 
 		loadFile();
 	}, [filePath]);
-	
+
 	// Initialize navigable nodes when JSON tree changes
 	useEffect(() => {
 		if (jsonTree) {
 			updateNavigableNodes();
 		}
 	}, [jsonTree, updateNavigableNodes]);
-	
+
 	// Update content when cursor position changes
 	useEffect(() => {
 		if (jsonTree) {
-			setContent(stringify(jsonTree, {
-				highlightNode: isNodeAtCursor
-			}));
+			setContent(
+				stringify(jsonTree, {
+					highlightNode: isNodeAtCursor,
+				}),
+			);
 		}
 	}, [jsonTree, isNodeAtCursor]);
 
@@ -123,7 +123,7 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 			<Text>Use j/k to navigate</Text>
 			<Box marginTop={1} flexDirection="column">
 				{content.split('\n').map((line, index) => (
-					<Text key={index}>{line.replaceAll('\t', '  ')}</Text>
+					<Text key={index}>{line}</Text>
 				))}
 			</Box>
 		</Box>
