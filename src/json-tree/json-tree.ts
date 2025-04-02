@@ -237,4 +237,63 @@ export function stringify(
 	node: JsonNode,
 	depth = 0,
 	syntax: typeof SyntaxHighlighting = SyntaxHighlighting,
-) {}
+): string {
+	const indent = "  ".repeat(depth);
+	const childIndent = "  ".repeat(depth + 1);
+
+	switch (node.type) {
+		case "Object": {
+			if (node.properties.length === 0) {
+				return syntax.OBJECT("{}");
+			}
+
+			const properties = node.properties
+				.map((prop) => {
+					const key = syntax.PROPERTY(prop.key.raw);
+					const value = stringify(prop.value, depth + 1, syntax);
+					return `${childIndent}${key}: ${value}`;
+				})
+				.join(",\n");
+
+			return `${syntax.OBJECT("{\n")}${properties}\n${indent}${syntax.OBJECT("}")}`;
+		}
+
+		case "Array": {
+			if (node.elements.length === 0) {
+				return syntax.ARRAY("[]");
+			}
+
+			const elements = node.elements
+				.map((elem) => `${childIndent}${stringify(elem, depth + 1, syntax)}`)
+				.join(",\n");
+
+			return `${syntax.ARRAY("[\n")}${elements}\n${indent}${syntax.ARRAY("]")}`;
+		}
+
+		case "Property": {
+			const key = syntax.PROPERTY(node.key.raw);
+			const value = stringify(node.value, depth, syntax);
+			return `${key}: ${value}`;
+		}
+
+		case "String": {
+			return syntax.STRING(node.raw);
+		}
+
+		case "Number": {
+			return syntax.NUMBER(node.raw);
+		}
+
+		case "Boolean": {
+			return syntax.BOOLEAN(node.raw);
+		}
+
+		case "Null": {
+			return syntax.NULL(node.raw);
+		}
+
+		default: {
+			throw new Error(`Unsupported node type: ${(node as JsonNode).type}`);
+		}
+	}
+}
