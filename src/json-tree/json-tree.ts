@@ -233,7 +233,7 @@ const SyntaxHighlighting = {
 	OBJECT: chalk.grey,
 };
 
-export function highlight(
+export function stringify(
 	node: JsonNode,
 	depth = 0,
 	syntax: typeof SyntaxHighlighting = SyntaxHighlighting,
