@@ -1,10 +1,5 @@
 import chalk from 'chalk';
 import {Box, Text, useFocusManager} from 'ink';
-import {
-	createKeyCombo,
-	Keybinding,
-	useKeybindings,
-} from './hooks/useKeybindings.js';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
@@ -12,7 +7,12 @@ import {JsonEditor} from './components/json-editor.js';
 import {useNotification} from './components/notification.js';
 import {FilePreview, LabelPreview} from './components/preview.js';
 import {Config} from './config.js';
-import {currentFocusedKeybindings} from './hooks/useKeybindings.js';
+import {
+	createKeyCombo,
+	currentFocusedKeybindings,
+	Keybinding,
+	useKeybindings,
+} from './hooks/useKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
 import {extractLabelsFromFile, find, Tools} from './tools.js';
@@ -224,7 +224,7 @@ function AppContent({tools, config}: Props) {
 	);
 
 	// Use keybindings hook for app-level navigation
-	useKeybindings(appKeybindings);
+	useKeybindings(appKeybindings, 'app');
 
 	useEffect(() => {
 		// Set initial focus

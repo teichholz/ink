@@ -4,7 +4,11 @@ import path from 'path';
 import {useEffect, useState, useMemo} from 'react';
 import {useJsonCursor} from '../hooks/useJsonCursor.js';
 import {JsonValueNode, parseJson, stringify} from '../json-tree/json-tree.js';
-import {createKeyCombo, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
+import {
+	createKeyCombo,
+	Keybinding,
+	useKeybindings,
+} from '../hooks/useKeybindings.js';
 
 type JsonEditorProps = {
 	/**
@@ -18,7 +22,7 @@ type JsonEditorProps = {
 	onExit?: () => void;
 };
 
-export function JsonEditor({filePath, onExit}: JsonEditorProps) {
+export function JsonEditor({filePath}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -42,16 +46,8 @@ export function JsonEditor({filePath, onExit}: JsonEditorProps) {
 				action: moveCursorUp,
 				showInHelp: true,
 			},
-			{
-				key: createKeyCombo('escape'),
-				label: 'Exit editor',
-				action: () => {
-					if (onExit) onExit();
-				},
-				showInHelp: true,
-			},
 		],
-		[moveCursorDown, moveCursorUp, onExit]
+		[moveCursorDown, moveCursorUp],
 	);
 
 	// Use keybindings hook

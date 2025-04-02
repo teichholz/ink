@@ -272,17 +272,17 @@ export type StringifyOptions = {
 
 export function stringify(
 	node: JsonNode,
-	options: StringifyOptions = {}
+	options: StringifyOptions = {},
 ): string {
-	const { 
-		depth = 0, 
+	const {
+		depth = 0,
 		syntax = SyntaxHighlighting,
-		highlightNode = () => false
+		highlightNode = () => false,
 	} = options;
-	
+
 	const indent = "  ".repeat(depth);
 	const isHighlighted = highlightNode(node);
-	
+
 	// Helper to apply highlighting if needed
 	const applyHighlight = (text: string) => {
 		return isHighlighted ? chalk.bgGray(text) : text;
@@ -300,20 +300,20 @@ export function stringify(
 				const value = stringify(prop.value, {
 					depth: depth + 1,
 					syntax,
-					highlightNode
+					highlightNode,
 				});
-				
+
 				// If the property node is highlighted, highlight just the key
 				const propHighlighted = highlightNode(prop);
 				const formattedKey = propHighlighted ? chalk.bgGray(key) : key;
-				
+
 				return `${childIndent}${formattedKey}: ${value}`;
 			})
 			.join(",\n");
 
 		const openBrace = syntax.OBJECT("{\n");
 		const closeBrace = `\n${indent}${syntax.OBJECT("}")}`;
-		
+
 		return applyHighlight(openBrace) + properties + applyHighlight(closeBrace);
 	}
 
@@ -324,17 +324,22 @@ export function stringify(
 
 		const childIndent = "  ".repeat(depth + 1);
 		const elements = node.elements
-			.map((elem) => `${childIndent}${stringify(elem, {
-				depth: depth + 1,
-				syntax,
-				highlightNode
-			})}`)
+			.map(
+				(elem) =>
+					`${childIndent}${stringify(elem, {
+						depth: depth + 1,
+						syntax,
+						highlightNode,
+					})}`,
+			)
 			.join(",\n");
 
 		const openBracket = syntax.ARRAY("[\n");
 		const closeBracket = `\n${indent}${syntax.ARRAY("]")}`;
-		
-		return applyHighlight(openBracket) + elements + applyHighlight(closeBracket);
+
+		return (
+			applyHighlight(openBracket) + elements + applyHighlight(closeBracket)
+		);
 	}
 
 	if (isPropertyNode(node)) {
@@ -342,9 +347,9 @@ export function stringify(
 		const value = stringify(node.value, {
 			depth,
 			syntax,
-			highlightNode
+			highlightNode,
 		});
-		
+
 		// For property nodes, we highlight just the key in the parent's context
 		return `${key}: ${value}`;
 	}
