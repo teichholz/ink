@@ -67,6 +67,11 @@ type Props<T extends FilterItem> = {
 	/**
 	 * Callback function when an item is selected
 	 */
+	onSelectionChange?: (item: T) => void;
+
+	/**
+	 * Callback function when an item is selected (via keyboard)
+	 */
 	onSelect?: (item: T) => void;
 };
 
@@ -80,6 +85,7 @@ export default function Filter<T extends FilterItem>({
 	outerBox,
 	filterOptions,
 	onFilterChange,
+	onSelectionChange,
 	onSelect,
 }: Props<T>) {
 	const ref = useRef<DOMElement>(null);
@@ -159,17 +165,26 @@ export default function Filter<T extends FilterItem>({
 				},
 				showInHelp: true,
 			},
+			{
+				key: createKeyCombo('', ['return']),
+				label: 'Edit file',
+				action: () => {
+					logger.info('Entering edit mode');
+					onSelect?.(filteredItems[selectedIndex]);
+				},
+				showInHelp: true,
+			},
 		],
-		[filteredItems.length, selectedIndex],
+		[filteredItems, selectedIndex],
 	);
 
 	const {isFocused} = useKeybindings(keybindings, id);
 
-	// notify app that an item is selected
+	// notify app that an item has changed
 	useEffect(() => {
 		const selected = filteredItems[selectedIndex];
 		if (selected && isFocused) {
-			onSelect?.(selected);
+			onSelectionChange?.(selected);
 		}
 	}, [selectedIndex, filteredItems, isFocused]);
 

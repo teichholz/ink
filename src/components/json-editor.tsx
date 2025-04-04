@@ -9,8 +9,14 @@ import {
 	Keybinding,
 	useKeybindings,
 } from '../hooks/useKeybindings.js';
+import {logger} from '../logger.js';
 
 type JsonEditorProps = {
+	/**
+	 * ID for the component
+	 */
+
+	id: string;
 	/**
 	 * Path to the JSON file to edit
 	 */
@@ -22,7 +28,7 @@ type JsonEditorProps = {
 	onExit?: () => void;
 };
 
-export function JsonEditor({filePath}: JsonEditorProps) {
+export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -46,12 +52,21 @@ export function JsonEditor({filePath}: JsonEditorProps) {
 				action: moveCursorUp,
 				showInHelp: true,
 			},
+			{
+				key: createKeyCombo('', ['escape']),
+				label: 'Leave json editor',
+				action: () => {
+					logger.info('Leaving json editor');
+					onExit?.();
+				},
+				showInHelp: true,
+			},
 		],
 		[moveCursorDown, moveCursorUp],
 	);
 
 	// Use keybindings hook
-	useKeybindings(keybindings, 'json-editor');
+	useKeybindings(keybindings, id);
 
 	useEffect(() => {
 		const loadFile = async () => {

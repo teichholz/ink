@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import {Box, Text, useFocusManager} from 'ink';
+import {Box, Text, useFocusManager, useInput} from 'ink';
 import {useAtom} from 'jotai';
 import {useEffect, useMemo, useState} from 'react';
 import Filter, {FilterItem} from './components/filter.js';
@@ -10,8 +10,10 @@ import {Config} from './config.js';
 import {
 	createKeyCombo,
 	currentFocusedKeybindings,
+	formatKeyBinding,
+	globalKeybindings,
 	Keybinding,
-	useKeybindings,
+	useGlobalKeybindings,
 } from './hooks/useKeybindings.js';
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
@@ -92,13 +94,18 @@ function AppContent({tools, config}: Props) {
 	// Track selected items for preview
 	const [selectedLabel, setSelectedLabel] = useState<LabelInfo | null>(null);
 	const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
-	const [editMode, setEditMode] = useState<boolean>(false);
 
-	const [activeKeybindings] = useAtom(currentFocusedKeybindings);
+	const [activeLocalKeybindings] = useAtom(currentFocusedKeybindings);
+	const [activeGlobalKeybindings] = useAtom(globalKeybindings);
 
 	const [cols, rows] = useStdoutDimensions();
-	const {focusNext} = useFocusManager();
+	const {focusNext, focus, disableFocus} = useFocusManager();
+
 	const {showNotification, NotificationComponent} = useNotification();
+
+	useEffect(() => {
+		disableFocus();
+	}, []);
 
 	useEffect(() => {
 		logger.info({config}, 'Starting application');
@@ -196,35 +203,56 @@ function AppContent({tools, config}: Props) {
 		loadFilesAndLabels();
 	}, [tools, config]);
 
+	// Use keybindings hook for app-level navigation
+
+	const [_, setHadFocus] = useState('filter1');
+	const [hasFocus, setHasFocus] = useState('filter1');
+
+	const focusSequence = ['filter1', 'filter2'];
+	const focusNextPane = () => {
+		setHadFocus(hasFocus);
+		var nextIndex =
+			(focusSequence.indexOf(hasFocus) + 1) % focusSequence.length;
+		const next = focusSequence[nextIndex];
+		setHasFocus(next);
+		focus(next);
+	};
+
+	useInput(input => {
+		if (input == '?') {
+			logger.info('Showing vertical help');
+			const globalHelpText = `Global\n${activeGlobalKeybindings?.keybindings
+				.map(formatKeyBinding)
+				.join('\n')}`;
+			const localHelpText = `Local\n${activeLocalKeybindings?.keybindings
+				.map(formatKeyBinding)
+				.join('\n')}`;
+			const helpText = `${globalHelpText}\n\n${localHelpText}`;
+
+			showNotification({
+				title: 'Help',
+				message: helpText,
+			});
+		}
+	});
+
 	// Define app-level keybindings
 	const appKeybindings = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: createKeyCombo('', ['return']),
-				label: 'Edit file',
+				key: createKeyCombo('', ['tab']),
+				label: 'Focus next',
 				action: () => {
-					logger.info('Entering edit mode');
-					setEditMode(true);
+					logger.info('Focusing next');
+					focusNextPane();
 				},
-				showInHelp: true,
-				requiresFocus: false,
-			},
-			{
-				key: createKeyCombo('', ['escape']),
-				label: 'Leave file',
-				action: () => {
-					logger.info('Leaving edit mode');
-					setEditMode(false);
-				},
-				showInHelp: true,
-				requiresFocus: false,
 			},
 		],
-		[],
+		[hasFocus],
 	);
 
 	// Use keybindings hook for app-level navigation
-	useKeybindings(appKeybindings, 'app');
+	useGlobalKeybindings(appKeybindings, 'app');
 
 	useEffect(() => {
 		// Set initial focus
@@ -299,9 +327,13 @@ function AppContent({tools, config}: Props) {
 							` (${chalk.yellow(Array.from(item.item.languages).join(', '))})`
 						}
 						onFilterChange={handleLabelFilterChange}
-						onSelect={item => {
+						onSelectionChange={item => {
 							setSelectedLabel(item.item);
 							setSelectedFile(null);
+						}}
+						onSelect={_ => {
+							logger.info('Entering edit mode filter 1');
+							focus('json-editor');
 						}}
 					/>
 					<Filter
@@ -309,17 +341,27 @@ function AppContent({tools, config}: Props) {
 						items={visibleFiles}
 						placeholder="Filter by file"
 						onFilterChange={handleFileFilterChange}
-						onSelect={item => {
+						onSelectionChange={item => {
 							setSelectedFile(item.item);
 							setSelectedLabel(null);
+						}}
+						onSelect={_ => {
+							logger.info('Entering edit mode filter 2');
+							focus('json-editor');
 						}}
 					/>
 				</Box>
 				<Box width="75%" borderStyle="round" flexDirection="column">
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
-					) : selectedFile && selectedFile.paths.size > 0 && editMode ? (
-						<JsonEditor filePath={Array.from(selectedFile.paths)[0]} />
+					) : selectedFile ? (
+						<JsonEditor
+							id="json-editor"
+							filePath={Array.from(selectedFile.paths)[0]}
+							onExit={() => {
+								focus(hasFocus);
+							}}
+						/>
 					) : (
 						<FilePreview file={selectedFile} />
 					)}
@@ -327,7 +369,10 @@ function AppContent({tools, config}: Props) {
 			</Box>
 
 			<Box height={1} width="100%" flexDirection="column" padding={1}>
-				<Text>{activeKeybindings?.pretty()}</Text>
+				<Text>
+					{activeGlobalKeybindings?.pretty()} |{' '}
+					{activeLocalKeybindings?.pretty()}
+				</Text>
 			</Box>
 			{NotificationComponent}
 		</Box>

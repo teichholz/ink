@@ -1,8 +1,7 @@
 import chalk from 'chalk';
 import {Key, useFocus, useInput} from 'ink';
-import {atom} from 'jotai';
-import {useAtom} from 'jotai';
-import {useCallback, useEffect, useMemo} from 'react';
+import {atom, useAtom} from 'jotai';
+import {useCallback, useEffect} from 'react';
 
 /**
  * Helper function to create a KeyCombo
@@ -19,6 +18,7 @@ type ActiveKeybindings = {
 	keybindings: Keybinding[];
 };
 
+export const globalKeybindings = atom<ActiveKeybindings>();
 export const currentFocusedKeybindings = atom<ActiveKeybindings>();
 
 type ModifierKey = keyof Key;
@@ -50,7 +50,8 @@ type LetterKey =
 	| 'w'
 	| 'x'
 	| 'y'
-	| 'z';
+	| 'z'
+	| '?';
 
 export type KeyCombo = {
 	/**
@@ -93,6 +94,14 @@ export type Keybinding = {
 	showInHelp?: boolean;
 };
 
+export function useGlobalKeybindings(keybindings: Keybinding[], id: string) {
+	keybindings.forEach(binding => {
+		binding.requiresFocus = false;
+	});
+
+	return useKeybindings(keybindings, id, true);
+}
+
 /**
  * Hook for managing keyboard shortcuts with focus control
  *
@@ -100,41 +109,25 @@ export type Keybinding = {
  * @param id Optional focus ID for the component
  * @returns Object with active keybindings and helper methods
  */
-export function useKeybindings(keybindings: Keybinding[], id: string) {
-	const {isFocused} = useFocus({id});
-	const [_, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
+export function useKeybindings(
+	keybindings: Keybinding[],
+	id: string,
+	global = false,
+) {
+	const local = !global;
+	const {isFocused} = local ? useFocus({id}) : {isFocused: true};
 
-	useEffect(() => {
-		if (isFocused) {
-			setActiveKeybindings({pretty: getKeybindingsHelp, keybindings});
-		}
-	}, [isFocused, keybindings]);
-
+	// defaults
 	keybindings.forEach(binding => {
-		binding.requiresFocus = binding.requiresFocus || true;
-		binding.showInHelp = binding.showInHelp || false;
+		binding.requiresFocus = binding.requiresFocus ?? true;
+		binding.showInHelp = binding.showInHelp ?? false;
 	});
 
 	/**
 	 * Normalize key format to internal representation
 	 */
-	const normalizeKeyBinding = (
-		keyBinding: KeyCombo,
-	): {
-		mainKey?: string | keyof Key;
-		modifiers: ModifierKey[];
-	} => {
-		return {
-			mainKey: keyBinding.key,
-			modifiers: keyBinding.modifiers || [],
-		};
-	};
 
 	useInput((input, key) => {
-		if (key.tab) {
-			return;
-		}
-
 		for (const binding of keybindings) {
 			if (binding.requiresFocus && !isFocused) {
 				continue;
@@ -162,57 +155,82 @@ export function useKeybindings(keybindings: Keybinding[], id: string) {
 		}
 	});
 
-	/**
-	 * Format a key binding for display
-	 */
-	const formatKeyBinding = useCallback((keyBinding: KeyCombo): string => {
-		const {mainKey, modifiers} = normalizeKeyBinding(keyBinding);
-
-		const formattedModifiers = modifiers.map(mod => {
-			switch (mod) {
-				case 'ctrl':
-					return chalk.cyan('Ctrl');
-				case 'shift':
-					return chalk.cyan('Shift');
-				case 'meta':
-					return chalk.cyan('Meta');
-				default:
-					return chalk.cyan(mod);
-			}
-		});
-
-		const formattedMainKey = chalk.cyan(
-			typeof mainKey === 'string' && mainKey.length === 1
-				? mainKey.toUpperCase()
-				: mainKey,
-		);
-
-		if (formattedModifiers.length > 0) {
-			return `${formattedModifiers.join('+')}+${formattedMainKey}`;
-		}
-
-		return formattedMainKey;
-	}, []);
-
 	// Format keybindings as a pretty string for help text
 	const getKeybindingsHelp = useCallback(() => {
-		return keybindings
-			.map(binding => {
-				return `${formatKeyBinding(binding.key)}: ${binding.label}`;
-			})
-			.join('  ');
+		return keybindings.map(formatKeyBinding).join('  ');
 	}, [keybindings, formatKeyBinding]);
 
-	// Get active keybindings (those that can be triggered in current focus state)
-	const activeKeybindings = useMemo(() => {
-		return keybindings.filter(
-			binding => binding.requiresFocus === false || isFocused,
-		);
-	}, [keybindings, isFocused]);
+	const [_1, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
+	const [_2, setActiveKeybindingsGlobal] = useAtom(globalKeybindings);
+
+	if (local) {
+		useEffect(() => {
+			if (isFocused) {
+				setActiveKeybindings({
+					pretty: getKeybindingsHelp,
+					keybindings,
+				});
+			}
+		}, [isFocused, keybindings]);
+	}
+
+	if (global) {
+		useEffect(() => {
+			setActiveKeybindingsGlobal({
+				pretty: getKeybindingsHelp,
+				keybindings,
+			});
+		}, [keybindings]);
+	}
 
 	return {
-		activeKeybindings,
 		getKeybindingsHelp,
 		isFocused,
 	};
+}
+
+function normalizeKeyBinding(keyBinding: KeyCombo): {
+	mainKey?: string | keyof Key;
+	modifiers: ModifierKey[];
+} {
+	return {
+		mainKey: keyBinding.key,
+		modifiers: keyBinding.modifiers ?? [],
+	};
+}
+
+/**
+ * Format a key binding for display
+ */
+export function formatKeyBinding(keybinding: Keybinding): string {
+	const {mainKey, modifiers} = normalizeKeyBinding(keybinding.key);
+
+	const formattedModifiers = modifiers.map(mod => {
+		switch (mod) {
+			case 'ctrl':
+				return chalk.cyan('Ctrl');
+			case 'shift':
+				return chalk.cyan('Shift');
+			case 'meta':
+				return chalk.cyan('Meta');
+			default:
+				return chalk.cyan(mod);
+		}
+	});
+
+	const formattedMainKey = chalk.cyan(
+		typeof mainKey === 'string' && mainKey.length === 1
+			? mainKey.toUpperCase()
+			: mainKey,
+	);
+
+	if (formattedModifiers.length > 0) {
+		return (
+			formattedModifiers.join('+') +
+			(formattedMainKey ? `+${formattedMainKey}` : '') +
+			`: ${keybinding.label}`
+		);
+	}
+
+	return formattedMainKey;
 }
