@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { parseJson } from "./json-tree.js";
+import { parseJson } from "./parse-json.js";
 
 describe("Json Tree", () => {
 	describe("parseJson function", () => {

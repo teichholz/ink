@@ -1,14 +1,15 @@
 import fs from 'fs/promises';
 import {Box, Text} from 'ink';
 import path from 'path';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {useJsonCursor} from '../hooks/useJsonCursor.js';
-import {JsonValueNode, parseJson, stringify} from '../json-tree/json-tree.js';
 import {
 	createKeyCombo,
 	Keybinding,
 	useKeybindings,
 } from '../hooks/useKeybindings.js';
+import {JsonValueNode, parseJson} from '../json-tree/parse-json.js';
+import {stringify, syntaxHighlight} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
 
 type JsonEditorProps = {
@@ -30,6 +31,7 @@ type JsonEditorProps = {
 
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<string>('');
+	const [highlightedContent, setHighlightedContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
 
@@ -43,13 +45,19 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			{
 				key: createKeyCombo('j'),
 				label: 'Move cursor down',
-				action: moveCursorDown,
+				action: () => {
+					moveCursorDown();
+					logger.info('Moved cursor down');
+				},
 				showInHelp: true,
 			},
 			{
 				key: createKeyCombo('k'),
 				label: 'Move cursor up',
-				action: moveCursorUp,
+				action: () => {
+					moveCursorUp();
+					logger.info('Moved cursor up');
+				},
 				showInHelp: true,
 			},
 			{
@@ -62,7 +70,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[moveCursorDown, moveCursorUp],
+		[moveCursorDown, moveCursorUp, onExit],
 	);
 
 	// Use keybindings hook
@@ -82,7 +90,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 				try {
 					const parsedJson = parseJson(fileContent);
-					setJsonTree(parsedJson as JsonValueNode);
 
 					// Format the JSON with syntax highlighting
 					setContent(
@@ -90,7 +97,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 							highlightNode: isNodeAtCursor,
 						}),
 					);
+					// Show non-highlighted content at the start
+					setHighlightedContent(content);
 
+					// Parse the stringified content back to have correct locations
 					setError(null);
 				} catch (parseError) {
 					setJsonTree(null);
@@ -112,23 +122,25 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		loadFile();
 	}, [filePath]);
 
-	// Initialize navigable nodes when JSON tree changes
+	// reparse and syntax highlight on change
+	useEffect(() => {
+		if (!content) {
+			return;
+		}
+
+		const [jsonTree, highlightedContent] = syntaxHighlight(content, {
+			highlightNode: isNodeAtCursor,
+		});
+		setHighlightedContent(highlightedContent);
+		setJsonTree(jsonTree as JsonValueNode);
+	}, [content]);
+
+	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
 		if (jsonTree) {
 			updateNavigableNodes();
 		}
 	}, [jsonTree, updateNavigableNodes]);
-
-	// Update content when cursor position changes
-	useEffect(() => {
-		if (jsonTree) {
-			setContent(
-				stringify(jsonTree, {
-					highlightNode: isNodeAtCursor,
-				}),
-			);
-		}
-	}, [jsonTree, isNodeAtCursor]);
 
 	if (error) {
 		return (
@@ -160,9 +172,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			<Text>Editing: {path.basename(filePath)}</Text>
 			<Text>Use j/k to navigate, Esc to exit</Text>
 			<Box marginTop={1} flexDirection="column">
-				{content.split('\n').map((line, index) => (
-					<Text key={index}>{line}</Text>
-				))}
+				<Text>{highlightedContent}</Text>
 			</Box>
 		</Box>
 	);

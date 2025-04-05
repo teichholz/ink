@@ -4,7 +4,7 @@ import {
 	JsonValueNode,
 	isArrayNode,
 	isObjectNode,
-} from '../json-tree/json-tree.js';
+} from '../json-tree/parse-json.js';
 
 type CursorPosition = {
 	path: (string | number)[];
