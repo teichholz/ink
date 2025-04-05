@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type {
 	ArrayExpression,
 	Literal,
@@ -6,6 +7,7 @@ import type {
 	Property,
 } from "acorn";
 import { type ExpressionStatement, parse } from "acorn";
+import { Res, type Result } from "../types.js";
 
 /**
  * Position information for a node in the JSON AST
@@ -139,25 +141,40 @@ export function isNullNode(node: JsonNode): node is JsonNullNode {
 	return node.type === "Null";
 }
 
+export async function parseJsonFile(
+	file: string,
+): Promise<Result<JsonNode, Error>> {
+	try {
+		const fileContent = await readFile(file, "utf-8");
+		return parseJson(fileContent);
+	} catch (error) {
+		return Res.err(error as Error);
+	}
+}
+
 /**
  * Parses a JSON string into an AST with location information
  */
-export function parseJson(json: string): JsonNode {
+export function parseJson(json: string): Result<JsonNode, Error> {
 	// Wrap the JSON in a variable declaration to make it valid JavaScript
 	const wrappedJson = `(${json})`;
 
-	// Parse the wrapped JSON as JavaScript
-	const ast = parse(wrappedJson, {
-		ecmaVersion: "latest",
-		sourceType: "module",
-		locations: true,
-		ranges: true,
-	});
+	try {
+		// Parse the wrapped JSON as JavaScript
+		const ast = parse(wrappedJson, {
+			ecmaVersion: "latest",
+			sourceType: "module",
+			locations: true,
+			ranges: true,
+		});
 
-	// Extract the object literal
-	const jsonNode = (ast.body[0] as ExpressionStatement).expression;
+		// Extract the object literal
+		const jsonNode = (ast.body[0] as ExpressionStatement).expression;
 
-	return transformAcornAst(jsonNode);
+		return Res.ok(transformAcornAst(jsonNode));
+	} catch (error) {
+		return Res.err(error as Error);
+	}
 }
 
 /**

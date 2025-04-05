@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Config } from "./config.js";
 import { extractLabelsFromFile, find } from "./tools.js";
-import { unwrap } from "./types.js";
+import { Res } from "./types.js";
 
 describe("Tools", () => {
 	describe("find function", () => {
@@ -130,7 +130,7 @@ describe("Tools", () => {
 				rootFileName: "messages",
 			};
 
-			const labels = unwrap(
+			const labels = Res.unwrap(
 				await extractLabelsFromFile(mockFile, "$.labels.%lang"),
 			);
 
@@ -155,7 +155,7 @@ describe("Tools", () => {
 				rootFileName: "empty",
 			};
 
-			const labels = unwrap(
+			const labels = Res.unwrap(
 				await extractLabelsFromFile(mockFile, "$.labels.%lang"),
 			);
 

@@ -1,6 +1,6 @@
 import { dirname } from "node:path";
 import { findUp } from "find-up";
-import { type Result, err, ok } from "./types.js";
+import { Res, type Result } from "./types.js";
 
 export type Config = {
 	/**
@@ -49,12 +49,12 @@ export async function getConfig(): Promise<Result<Config, Error>> {
 	const configPath = await findUp("int.mjs");
 
 	if (!configPath) {
-		return err(Error("Could not find int.mjs configuration file"));
+		return Res.err(Error("Could not find int.mjs configuration file"));
 	}
 
 	const configModule = await import(configPath);
 	const config = configModule.default as Config;
 	config.rootDir = dirname(configPath);
 
-	return ok(config);
+	return Res.ok(config);
 }

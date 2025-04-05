@@ -1,14 +1,23 @@
-import fs from 'fs/promises';
 import {Box, Text} from 'ink';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
-import {useJsonCursor} from '../hooks/useJsonCursor.js';
 import {
 	createKeyCombo,
 	Keybinding,
 	useKeybindings,
 } from '../hooks/useKeybindings.js';
-import {JsonValueNode, parseJson} from '../json-tree/parse-json.js';
+import {
+	isArrayNode,
+	isBooleanNode,
+	isNullNode,
+	isNumberNode,
+	isObjectNode,
+	isStringNode,
+	JsonNode,
+	JsonValueNode,
+	parseJson,
+	parseJsonFile,
+} from '../json-tree/parse-json.js';
 import {stringify, syntaxHighlight} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
 
@@ -34,16 +43,46 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [highlightedContent, setHighlightedContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
+	const [cursorPosition, setCursorPosition] = useState<number>(0);
+	const [navigableNodes, setNavigableNodes] = useState<JsonNode[]>([]);
 
-	// Use the JSON cursor hook
-	const {
-		updateRootNode,
-		updateNavigableNodes,
-		moveCursorUp,
-		moveCursorDown,
-		isNodeAtCursor,
-		getCurrentCursor,
-	} = useJsonCursor(jsonTree);
+	// Function to collect all navigable nodes from the JSON tree
+	const collectNavigableNodes = (node: JsonNode | null): JsonNode[] => {
+		if (!node) return [];
+
+		const nodes: JsonNode[] = [node];
+
+		if (isObjectNode(node)) {
+			// Add all property keys (but not primitive values)
+			node.properties.forEach(prop => {
+				nodes.push(prop);
+
+				// For non-primitive values, add their children too
+				const valueNodes = !isPrimitiveValueNode(prop.value)
+					? collectNavigableNodes(prop.value)
+					: [];
+				if (valueNodes.length > 0) {
+					nodes.push(...valueNodes);
+				}
+			});
+		} else if (isArrayNode(node)) {
+			// Add all array elements
+			node.elements.forEach(elem => {
+				nodes.push(...collectNavigableNodes(elem));
+			});
+		}
+
+		return nodes;
+	};
+
+	const isPrimitiveValueNode = (node: JsonNode): boolean => {
+		return (
+			isStringNode(node) ||
+			isNumberNode(node) ||
+			isBooleanNode(node) ||
+			isNullNode(node)
+		);
+	};
 
 	// Define keybindings
 	const keybindings = useMemo<Keybinding[]>(
@@ -52,8 +91,12 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: createKeyCombo('j'),
 				label: 'Move cursor down',
 				action: () => {
-					moveCursorDown();
-					logger.info('Moved cursor down');
+					if (navigableNodes.length > 0) {
+						setCursorPosition(prev =>
+							prev >= navigableNodes.length - 1 ? 0 : prev + 1,
+						);
+						logger.info('Moved cursor down');
+					}
 				},
 				showInHelp: true,
 			},
@@ -61,8 +104,12 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: createKeyCombo('k'),
 				label: 'Move cursor up',
 				action: () => {
-					moveCursorUp();
-					logger.info('Moved cursor up');
+					if (navigableNodes.length > 0) {
+						setCursorPosition(prev =>
+							prev <= 0 ? navigableNodes.length - 1 : prev - 1,
+						);
+						logger.info('Moved cursor up');
+					}
 				},
 				showInHelp: true,
 			},
@@ -76,7 +123,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[moveCursorDown, moveCursorUp],
+		[navigableNodes.length],
 	);
 
 	// Use keybindings hook
@@ -91,40 +138,46 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				return;
 			}
 
-			try {
-				const fileContent = await fs.readFile(filePath, 'utf-8');
+			const [parsedJson, err] = await parseJsonFile(filePath);
 
-				try {
-					const parsedJson = parseJson(fileContent);
-
-					// Format the JSON without syntax highlighting
-					setContent(stringify(parsedJson));
-					// Show non-highlighted content at the start
-					setHighlightedContent(content);
-
-					// logger.info('Set highlighted content');
-
-					// Parse the stringified content back to have correct locations
-					setError(null);
-				} catch (parseError) {
-					setJsonTree(null);
-					setError(
-						parseError instanceof Error
-							? parseError
-							: new Error(String(parseError)),
-					);
-				}
-			} catch (fileError) {
-				setContent('');
+			if (err) {
+				setError(err);
 				setJsonTree(null);
-				setError(
-					fileError instanceof Error ? fileError : new Error(String(fileError)),
-				);
+				setError(err instanceof Error ? err : new Error(String(err)));
+				return;
 			}
+
+			// Format the JSON without syntax highlighting
+			setContent(stringify(parsedJson));
+			// Reparse since stringify changed the formatting and we need the correct locations
+			const [json, err2] = parseJson(content);
+
+			if (err2) {
+				setError(err2);
+				setJsonTree(null);
+				setError(err2 instanceof Error ? err2 : new Error(String(err2)));
+				return;
+			}
+
+			logger.info('Set highlighted content due to file path change');
+
+			setJsonTree(json as JsonValueNode);
+			setError(null);
+			// Reset cursor position
+			setCursorPosition(0);
 		};
 
 		loadFile();
 	}, [filePath]);
+
+	// Update navigable nodes when JSON tree changes
+	useEffect(() => {
+		if (jsonTree) {
+			const nodes = collectNavigableNodes(jsonTree);
+			setNavigableNodes(nodes);
+			setCursorPosition(0);
+		}
+	}, [jsonTree]);
 
 	// reparse and syntax highlight on change
 	useEffect(() => {
@@ -132,15 +185,23 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return;
 		}
 
-		logger.info({cursor: getCurrentCursor()}, 'Current cursor position');
-		const [jsonTree, highlightedContent] = syntaxHighlight(content, {
-			highlightNode: isNodeAtCursor,
+		// Create a predicate function to highlight the node at the current cursor position
+		const highlightCurrentNode = (node: JsonNode): boolean => {
+			if (
+				navigableNodes.length === 0 ||
+				cursorPosition >= navigableNodes.length
+			) {
+				return false;
+			}
+			return node === navigableNodes[cursorPosition];
+		};
+
+		const highlightedContent = syntaxHighlight(jsonTree as JsonValueNode, {
+			highlightNode: highlightCurrentNode,
 		});
+
 		setHighlightedContent(highlightedContent);
-		setJsonTree(jsonTree as JsonValueNode);
-		updateRootNode(jsonTree as JsonValueNode);
-		updateNavigableNodes();
-	}, [content, isNodeAtCursor]);
+	}, [jsonTree, cursorPosition, navigableNodes]);
 
 	if (error) {
 		return (

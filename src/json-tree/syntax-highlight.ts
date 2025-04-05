@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { logger } from "../logger.js";
 import {
 	type JsonNode,
 	isArrayNode,
@@ -9,7 +8,6 @@ import {
 	isObjectNode,
 	isPropertyNode,
 	isStringNode,
-	parseJson,
 } from "./parse-json.js";
 
 type SyntaxHighlighting = {
@@ -54,21 +52,12 @@ export type SyntaxHighlightOptions = {
  * Essentially reparses the JSON string and highlights the nodes based on the options
  */
 export function syntaxHighlight(
-	jsonString: string,
+	node: JsonNode,
 	options: SyntaxHighlightOptions = {},
-): [JsonNode | null, string] {
-	try {
-		options.syntax ??= ChalkHighlighting;
-		options.highlightNode ??= () => false;
-		const jsonNode = parseJson(jsonString);
-		return [jsonNode, stringify(jsonNode, options)];
-	} catch (error) {
-		logger.error(
-			{ error, jsonString },
-			"Failed to parse JSON for syntax highlighting:",
-		);
-		return [null, jsonString];
-	}
+): string {
+	options.syntax ??= ChalkHighlighting;
+	options.highlightNode ??= () => false;
+	return stringify(node, options);
 }
 
 export type StringifyOptions = {
