@@ -132,8 +132,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						1,
 						'yoooo, i just inserted this text',
 					);
-					// Create a new instance to trigger React state update
-					setContent(content);
+					// Force a re-render by updating the state with the same object
+					setContent(Object.assign({}, content));
 				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
@@ -245,7 +245,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		logger.info('Reparsing content due to content change');
 		reparseContent();
-	}, [content.changed]);
+	}, [content]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
