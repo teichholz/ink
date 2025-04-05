@@ -12,6 +12,7 @@ import {
 	isNullNode,
 	isNumberNode,
 	isObjectNode,
+	isPropertyNode,
 	isStringNode,
 	JsonNode,
 	JsonValueNode,
@@ -114,6 +115,21 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 			{
+				key: createKeyCombo('r'),
+				label: 'Edit string',
+				action: () => {},
+				predicate: () => {
+					const node = navigableNodes[cursorPosition];
+					const isString = isStringNode(node);
+					let isStringProperty = false;
+					if (isPropertyNode(node)) {
+						isStringProperty = node.value.type === 'String';
+					}
+					return isString || isStringProperty;
+				},
+				showInHelp: true,
+			},
+			{
 				key: createKeyCombo('', ['escape']),
 				label: 'Leave json editor',
 				action: () => {
@@ -123,7 +139,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length],
+		[navigableNodes.length, cursorPosition],
 	);
 
 	// Use keybindings hook
@@ -141,6 +157,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			const [parsedJson, err] = await parseJsonFile(filePath);
 
 			if (err) {
+				logger.error({error: err}, 'Error parsing JSON file');
 				setError(err);
 				setJsonTree(null);
 				setError(err instanceof Error ? err : new Error(String(err)));
@@ -148,11 +165,17 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			}
 
 			// Format the JSON without syntax highlighting
-			setContent(stringify(parsedJson));
+			const formattedContent = stringify(parsedJson);
+			setContent(formattedContent);
+
 			// Reparse since stringify changed the formatting and we need the correct locations
-			const [json, err2] = parseJson(content);
+			const [json, err2] = parseJson(formattedContent);
 
 			if (err2) {
+				logger.error(
+					{error: err2, content: formattedContent},
+					'Error parsing stringified JSON',
+				);
 				setError(err2);
 				setJsonTree(null);
 				setError(err2 instanceof Error ? err2 : new Error(String(err2)));
@@ -161,14 +184,52 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			logger.info('Set highlighted content due to file path change');
 
+			// Set the JSON tree first
 			setJsonTree(json as JsonValueNode);
 			setError(null);
+
+			// Initialize the highlighted content immediately with no highlights yet
+			const initialHighlightedContent = syntaxHighlight(json as JsonValueNode, {
+				highlightNode: () => false,
+			});
+			setHighlightedContent(initialHighlightedContent);
+
 			// Reset cursor position
 			setCursorPosition(0);
 		};
 
 		loadFile();
 	}, [filePath]);
+
+	const reparseContent = () => {
+		if (!content) {
+			return;
+		}
+
+		const [json, err] = parseJson(content);
+
+		if (err) {
+			logger.error(
+				{error: err, content: content},
+				'Error parsing stringified JSON',
+			);
+			setError(err);
+			setJsonTree(null);
+			setError(err instanceof Error ? err : new Error(String(err)));
+			return;
+		}
+
+		logger.info('Set highlighted content due to file path change');
+
+		// Set the JSON tree first
+		setJsonTree(json as JsonValueNode);
+		setError(null);
+	};
+
+	// Update json tree when content changes
+	useEffect(() => {
+		reparseContent();
+	}, [content]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
@@ -181,7 +242,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	// reparse and syntax highlight on change
 	useEffect(() => {
-		if (!content) {
+		if (!jsonTree) {
 			return;
 		}
 
@@ -196,7 +257,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return node === navigableNodes[cursorPosition];
 		};
 
-		const highlightedContent = syntaxHighlight(jsonTree as JsonValueNode, {
+		const highlightedContent = syntaxHighlight(jsonTree, {
 			highlightNode: highlightCurrentNode,
 		});
 

@@ -82,6 +82,11 @@ export type Keybinding = {
 	action: () => void;
 
 	/**
+	 * When provided, the keybinding will only be active when the predicate returns true
+	 */
+	predicate?: () => boolean;
+
+	/**
 	 * Whether this keybinding should only work when the component has focus
 	 * @default true
 	 */
@@ -121,6 +126,7 @@ export function useKeybindings(
 	keybindings.forEach(binding => {
 		binding.requiresFocus = binding.requiresFocus ?? true;
 		binding.showInHelp = binding.showInHelp ?? false;
+		binding.predicate = binding.predicate ?? (() => true);
 	});
 
 	/**
@@ -130,6 +136,10 @@ export function useKeybindings(
 	useInput((input, key) => {
 		for (const binding of keybindings) {
 			if (binding.requiresFocus && !isFocused) {
+				continue;
+			}
+
+			if (!binding.predicate?.()) {
 				continue;
 			}
 
@@ -157,7 +167,11 @@ export function useKeybindings(
 
 	// Format keybindings as a pretty string for help text
 	const getKeybindingsHelp = useCallback(() => {
-		return keybindings.map(formatKeyBinding).join('  ');
+		return keybindings
+			.filter(binding => binding.predicate?.())
+			.map(formatKeyBinding)
+			.filter(Boolean)
+			.join('  ');
 	}, [keybindings, formatKeyBinding]);
 
 	const [_1, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
