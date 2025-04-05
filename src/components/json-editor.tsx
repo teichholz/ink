@@ -36,8 +36,14 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [error, setError] = useState<Error | null>(null);
 
 	// Use the JSON cursor hook
-	const {updateNavigableNodes, moveCursorUp, moveCursorDown, isNodeAtCursor} =
-		useJsonCursor(jsonTree);
+	const {
+		updateRootNode,
+		updateNavigableNodes,
+		moveCursorUp,
+		moveCursorDown,
+		isNodeAtCursor,
+		getCurrentCursor,
+	} = useJsonCursor(jsonTree);
 
 	// Define keybindings
 	const keybindings = useMemo<Keybinding[]>(
@@ -70,7 +76,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[moveCursorDown, moveCursorUp, onExit],
+		[moveCursorDown, moveCursorUp],
 	);
 
 	// Use keybindings hook
@@ -91,14 +97,12 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				try {
 					const parsedJson = parseJson(fileContent);
 
-					// Format the JSON with syntax highlighting
-					setContent(
-						stringify(parsedJson, {
-							highlightNode: isNodeAtCursor,
-						}),
-					);
+					// Format the JSON without syntax highlighting
+					setContent(stringify(parsedJson));
 					// Show non-highlighted content at the start
 					setHighlightedContent(content);
+
+					// logger.info('Set highlighted content');
 
 					// Parse the stringified content back to have correct locations
 					setError(null);
@@ -128,19 +132,15 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return;
 		}
 
+		logger.info({cursor: getCurrentCursor()}, 'Current cursor position');
 		const [jsonTree, highlightedContent] = syntaxHighlight(content, {
 			highlightNode: isNodeAtCursor,
 		});
 		setHighlightedContent(highlightedContent);
 		setJsonTree(jsonTree as JsonValueNode);
-	}, [content]);
-
-	// Update navigable nodes when JSON tree changes
-	useEffect(() => {
-		if (jsonTree) {
-			updateNavigableNodes();
-		}
-	}, [jsonTree, updateNavigableNodes]);
+		updateRootNode(jsonTree as JsonValueNode);
+		updateNavigableNodes();
+	}, [content, isNodeAtCursor]);
 
 	if (error) {
 		return (
