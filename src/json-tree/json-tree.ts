@@ -270,6 +270,7 @@ export type StringifyOptions = {
 	highlightNode?: (node: JsonNode) => boolean;
 	currentLine?: number;
 	currentColumn?: number;
+	updateLocations?: boolean;
 };
 
 /**
@@ -288,6 +289,7 @@ export function stringify(
 		highlightNode = () => false,
 		currentLine = 1,
 		currentColumn = 0,
+		updateLocations = false,
 	} = options;
 
 	const indent = "  ".repeat(depth);
@@ -298,9 +300,11 @@ export function stringify(
 		return isHighlighted ? chalk.bgGray(text) : text;
 	};
 
-	// Always update node location
-	node.loc.start.line = currentLine;
-	node.loc.start.column = currentColumn;
+	// Update node location if tracking is enabled
+	if (updateLocations) {
+		node.loc.start.line = currentLine;
+		node.loc.start.column = currentColumn;
+	}
 
 	let line = currentLine;
 	let column = currentColumn;
@@ -309,9 +313,11 @@ export function stringify(
 		if (node.properties.length === 0) {
 			const result = applyHighlight(syntax.OBJECT("{}"));
 			
-			column += 2; // Length of "{}"
-			node.loc.end.line = line;
-			node.loc.end.column = column;
+			if (updateLocations) {
+				column += 2; // Length of "{}"
+				node.loc.end.line = line;
+				node.loc.end.column = column;
+			}
 			
 			return result;
 		}
@@ -327,15 +333,17 @@ export function stringify(
 			const prop = node.properties[i];
 			const key = syntax.PROPERTY(prop.key.raw);
 			
-			// Always update property key location
-			prop.key.loc.start.line = line;
-			prop.key.loc.start.column = column;
-			prop.key.loc.end.line = line;
-			prop.key.loc.end.column = column + prop.key.raw.length;
-			
-			// Update property node start location
-			prop.loc.start.line = line;
-			prop.loc.start.column = column;
+			// Update property key location
+			if (updateLocations) {
+				prop.key.loc.start.line = line;
+				prop.key.loc.start.column = column;
+				prop.key.loc.end.line = line;
+				prop.key.loc.end.column = column + prop.key.raw.length;
+				
+				// Update property node start location
+				prop.loc.start.line = line;
+				prop.loc.start.column = column;
+			}
 			
 			// Calculate new position after key and colon
 			column += prop.key.raw.length + 2; // +2 for ": "
@@ -347,6 +355,7 @@ export function stringify(
 				highlightNode,
 				currentLine: line,
 				currentColumn: column,
+				updateLocations,
 			});
 
 			// If the property node is highlighted, highlight just the key
@@ -356,9 +365,11 @@ export function stringify(
 			const propText = `${childIndent}${formattedKey}: ${value}`;
 			propertiesText += propText;
 			
-			// Always update property end location
-			prop.loc.end.line = prop.value.loc.end.line;
-			prop.loc.end.column = prop.value.loc.end.column;
+			// Update property end location
+			if (updateLocations) {
+				prop.loc.end.line = prop.value.loc.end.line;
+				prop.loc.end.column = prop.value.loc.end.column;
+			}
 			
 			// Add comma and newline if not the last property
 			if (i < node.properties.length - 1) {
@@ -371,11 +382,13 @@ export function stringify(
 		const openBrace = syntax.OBJECT("{\n");
 		const closeBrace = `\n${indent}${syntax.OBJECT("}")}`;
 		
-		// Always update end location
-		line++; // Account for the final newline
-		column = indent.length + 1; // +1 for the closing brace
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		// Update end location
+		if (updateLocations) {
+			line++; // Account for the final newline
+			column = indent.length + 1; // +1 for the closing brace
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 
 		return applyHighlight(openBrace) + propertiesText + applyHighlight(closeBrace);
 	}
@@ -384,9 +397,11 @@ export function stringify(
 		if (node.elements.length === 0) {
 			const result = applyHighlight(syntax.ARRAY("[]"));
 			
-			column += 2; // Length of "[]"
-			node.loc.end.line = line;
-			node.loc.end.column = column;
+			if (updateLocations) {
+				column += 2; // Length of "[]"
+				node.loc.end.line = line;
+				node.loc.end.column = column;
+			}
 			
 			return result;
 		}
@@ -408,6 +423,7 @@ export function stringify(
 				highlightNode,
 				currentLine: line,
 				currentColumn: column,
+				updateLocations,
 			});
 			
 			elementsText += `${childIndent}${elemText}`;
@@ -423,11 +439,13 @@ export function stringify(
 		const openBracket = syntax.ARRAY("[\n");
 		const closeBracket = `\n${indent}${syntax.ARRAY("]")}`;
 		
-		// Always update end location
-		line++; // Account for the final newline
-		column = indent.length + 1; // +1 for the closing bracket
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		// Update end location
+		if (updateLocations) {
+			line++; // Account for the final newline
+			column = indent.length + 1; // +1 for the closing bracket
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 
 		return applyHighlight(openBracket) + elementsText + applyHighlight(closeBracket);
 	}
@@ -435,11 +453,13 @@ export function stringify(
 	if (isPropertyNode(node)) {
 		const key = syntax.PROPERTY(node.key.raw);
 		
-		// Always update key location
-		node.key.loc.start.line = line;
-		node.key.loc.start.column = column;
-		node.key.loc.end.line = line;
-		node.key.loc.end.column = column + node.key.raw.length;
+		// Update key location if needed
+		if (updateLocations) {
+			node.key.loc.start.line = line;
+			node.key.loc.start.column = column;
+			node.key.loc.end.line = line;
+			node.key.loc.end.column = column + node.key.raw.length;
+		}
 		
 		// Calculate new position after key and colon
 		column += node.key.raw.length + 2; // +2 for ": "
@@ -450,6 +470,7 @@ export function stringify(
 			highlightNode,
 			currentLine: line,
 			currentColumn: column,
+			updateLocations,
 		});
 
 		// For property nodes, we highlight just the key in the parent's context
@@ -459,9 +480,11 @@ export function stringify(
 	if (isStringNode(node)) {
 		const result = applyHighlight(syntax.STRING(node.raw));
 		
-		column += node.raw.length;
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		if (updateLocations) {
+			column += node.raw.length;
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 		
 		return result;
 	}
@@ -469,9 +492,11 @@ export function stringify(
 	if (isNumberNode(node)) {
 		const result = applyHighlight(syntax.NUMBER(node.raw));
 		
-		column += node.raw.length;
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		if (updateLocations) {
+			column += node.raw.length;
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 		
 		return result;
 	}
@@ -479,9 +504,11 @@ export function stringify(
 	if (isBooleanNode(node)) {
 		const result = applyHighlight(syntax.BOOLEAN(node.raw));
 		
-		column += node.raw.length;
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		if (updateLocations) {
+			column += node.raw.length;
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 		
 		return result;
 	}
@@ -489,9 +516,11 @@ export function stringify(
 	if (isNullNode(node)) {
 		const result = applyHighlight(syntax.NULL(node.raw));
 		
-		column += 4; // Length of "null"
-		node.loc.end.line = line;
-		node.loc.end.column = column;
+		if (updateLocations) {
+			column += 4; // Length of "null"
+			node.loc.end.line = line;
+			node.loc.end.column = column;
+		}
 		
 		return result;
 	}
