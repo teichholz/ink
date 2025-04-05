@@ -126,9 +126,14 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					const scol = node.value.loc.start.column + 1;
 					const ecol = node.value.loc.end.column;
 					logger.info({line, scol, ecol}, 'Replacing region');
-					content.replace(line, scol, 1, 'yoooo, i just inserted this text');
+					content.replace(
+						line,
+						scol + 1,
+						1,
+						'yoooo, i just inserted this text',
+					);
 					// Create a new instance to trigger React state update
-					setContent(new TextBuffer(content.getText().join('\n')));
+					setContent(content);
 				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
@@ -151,7 +156,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition, content],
+		[navigableNodes.length, cursorPosition, content.changed],
 	);
 
 	// Use keybindings hook
@@ -240,7 +245,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		logger.info('Reparsing content due to content change');
 		reparseContent();
-	}, [content, content?.changed]);
+	}, [content.changed]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
