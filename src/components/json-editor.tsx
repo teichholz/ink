@@ -43,9 +43,11 @@ type JsonEditorProps = {
 
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<TextBuffer>(TextBuffer.empty());
+	const [contentLength, setContentLength] = useState<number>(0);
 	const [highlightedContent, setHighlightedContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
+
 	const [cursorPosition, setCursorPosition] = useState<number>(0);
 	const [navigableNodes, setNavigableNodes] = useState<JsonNode[]>([]);
 
@@ -132,8 +134,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						1,
 						'yoooo, i just inserted this text',
 					);
-					// Force a re-render by updating the state with the same object
-					setContent(Object.assign({}, content));
+					// Update length to trigger reparse
+					setContentLength(content.length);
 				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
@@ -156,7 +158,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition, content.changed],
+		[navigableNodes.length, cursorPosition, contentLength],
 	);
 
 	// Use keybindings hook
@@ -245,15 +247,16 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		logger.info('Reparsing content due to content change');
 		reparseContent();
-	}, [content]);
+	}, [contentLength]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
-		if (jsonTree) {
-			const nodes = collectNavigableNodes(jsonTree);
-			setNavigableNodes(nodes);
-			setCursorPosition(0);
+		if (!jsonTree) {
+			return;
 		}
+
+		const nodes = collectNavigableNodes(jsonTree);
+		setNavigableNodes(nodes);
 	}, [jsonTree]);
 
 	// reparse and syntax highlight on change

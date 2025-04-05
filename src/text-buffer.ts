@@ -6,7 +6,6 @@ import {
 
 export class TextBuffer {
 	private _buffer: PieceTreeBase;
-	public changed = 0;
 
 	constructor(content: string | Buffer) {
 		const builder = new PieceTreeTextBufferBuilder();
@@ -61,7 +60,6 @@ export class TextBuffer {
 		const start = this._buffer.getOffsetAt(line + 1, startCol + 1);
 		this._buffer.delete(start, endCol - startCol);
 		this._buffer.insert(start, newContent);
-		this.changed++;
 	}
 
 	/**
@@ -74,7 +72,6 @@ export class TextBuffer {
 		const start = this._buffer.getOffsetAt(line, col);
 		this._buffer.delete(start, cnt);
 		this._buffer.insert(start, newContent);
-		this.changed++;
 	}
 
 	insert(offset: number, content: string): void {
