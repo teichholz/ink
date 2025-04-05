@@ -268,17 +268,8 @@ export type StringifyOptions = {
 	depth?: number;
 	syntax?: typeof SyntaxHighlighting;
 	highlightNode?: (node: JsonNode) => boolean;
-	currentLine?: number;
-	currentColumn?: number;
-	updateLocations?: boolean;
 };
 
-/**
- * Stringifies a JSON node with syntax highlighting and location tracking
- * @param node The JSON node to stringify
- * @param options Stringify options including location tracking
- * @returns The stringified JSON
- */
 export function stringify(
 	node: JsonNode,
 	options: StringifyOptions = {},
@@ -287,9 +278,6 @@ export function stringify(
 		depth = 0,
 		syntax = SyntaxHighlighting,
 		highlightNode = () => false,
-		currentLine = 1,
-		currentColumn = 0,
-		updateLocations = false,
 	} = options;
 
 	const indent = "  ".repeat(depth);
@@ -300,177 +288,66 @@ export function stringify(
 		return isHighlighted ? chalk.bgGray(text) : text;
 	};
 
-	// Update node location if tracking is enabled
-	if (updateLocations) {
-		node.loc.start.line = currentLine;
-		node.loc.start.column = currentColumn;
-	}
-
-	let line = currentLine;
-	let column = currentColumn;
-
 	if (isObjectNode(node)) {
 		if (node.properties.length === 0) {
-			const result = applyHighlight(syntax.OBJECT("{}"));
-			
-			if (updateLocations) {
-				column += 2; // Length of "{}"
-				node.loc.end.line = line;
-				node.loc.end.column = column;
-			}
-			
-			return result;
+			return applyHighlight(syntax.OBJECT("{}"));
 		}
 
 		const childIndent = "  ".repeat(depth + 1);
-		let propertiesText = "";
-		
-		// Track current position
-		line++; // Account for the opening brace and newline
-		column = childIndent.length;
-		
-		for (let i = 0; i < node.properties.length; i++) {
-			const prop = node.properties[i];
-			const key = syntax.PROPERTY(prop.key.raw);
-			
-			// Update property key location
-			if (updateLocations) {
-				prop.key.loc.start.line = line;
-				prop.key.loc.start.column = column;
-				prop.key.loc.end.line = line;
-				prop.key.loc.end.column = column + prop.key.raw.length;
-				
-				// Update property node start location
-				prop.loc.start.line = line;
-				prop.loc.start.column = column;
-			}
-			
-			// Calculate new position after key and colon
-			column += prop.key.raw.length + 2; // +2 for ": "
-			
-			// Stringify the value with updated position
-			const value = stringify(prop.value, {
-				depth: depth + 1,
-				syntax,
-				highlightNode,
-				currentLine: line,
-				currentColumn: column,
-				updateLocations,
-			});
+		const properties = node.properties
+			.map((prop) => {
+				const key = syntax.PROPERTY(prop.key.raw);
+				const value = stringify(prop.value, {
+					depth: depth + 1,
+					syntax,
+					highlightNode,
+				});
 
-			// If the property node is highlighted, highlight just the key
-			const propHighlighted = highlightNode(prop);
-			const formattedKey = propHighlighted ? chalk.bgGray(key) : key;
-			
-			const propText = `${childIndent}${formattedKey}: ${value}`;
-			propertiesText += propText;
-			
-			// Update property end location
-			if (updateLocations) {
-				prop.loc.end.line = prop.value.loc.end.line;
-				prop.loc.end.column = prop.value.loc.end.column;
-			}
-			
-			// Add comma and newline if not the last property
-			if (i < node.properties.length - 1) {
-				propertiesText += ",\n";
-				line++;
-				column = childIndent.length;
-			}
-		}
+				// If the property node is highlighted, highlight just the key
+				const propHighlighted = highlightNode(prop);
+				const formattedKey = propHighlighted ? chalk.bgGray(key) : key;
+
+				return `${childIndent}${formattedKey}: ${value}`;
+			})
+			.join(",\n");
 
 		const openBrace = syntax.OBJECT("{\n");
 		const closeBrace = `\n${indent}${syntax.OBJECT("}")}`;
-		
-		// Update end location
-		if (updateLocations) {
-			line++; // Account for the final newline
-			column = indent.length + 1; // +1 for the closing brace
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
 
-		return applyHighlight(openBrace) + propertiesText + applyHighlight(closeBrace);
+		return applyHighlight(openBrace) + properties + applyHighlight(closeBrace);
 	}
 
 	if (isArrayNode(node)) {
 		if (node.elements.length === 0) {
-			const result = applyHighlight(syntax.ARRAY("[]"));
-			
-			if (updateLocations) {
-				column += 2; // Length of "[]"
-				node.loc.end.line = line;
-				node.loc.end.column = column;
-			}
-			
-			return result;
+			return applyHighlight(syntax.ARRAY("[]"));
 		}
 
 		const childIndent = "  ".repeat(depth + 1);
-		let elementsText = "";
-		
-		// Track current position
-		line++; // Account for the opening bracket and newline
-		column = childIndent.length;
-		
-		for (let i = 0; i < node.elements.length; i++) {
-			const elem = node.elements[i];
-			
-			// Stringify the element with updated position
-			const elemText = stringify(elem, {
-				depth: depth + 1,
-				syntax,
-				highlightNode,
-				currentLine: line,
-				currentColumn: column,
-				updateLocations,
-			});
-			
-			elementsText += `${childIndent}${elemText}`;
-			
-			// Add comma and newline if not the last element
-			if (i < node.elements.length - 1) {
-				elementsText += ",\n";
-				line++;
-				column = childIndent.length;
-			}
-		}
+		const elements = node.elements
+			.map(
+				(elem) =>
+					`${childIndent}${stringify(elem, {
+						depth: depth + 1,
+						syntax,
+						highlightNode,
+					})}`,
+			)
+			.join(",\n");
 
 		const openBracket = syntax.ARRAY("[\n");
 		const closeBracket = `\n${indent}${syntax.ARRAY("]")}`;
-		
-		// Update end location
-		if (updateLocations) {
-			line++; // Account for the final newline
-			column = indent.length + 1; // +1 for the closing bracket
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
 
-		return applyHighlight(openBracket) + elementsText + applyHighlight(closeBracket);
+		return (
+			applyHighlight(openBracket) + elements + applyHighlight(closeBracket)
+		);
 	}
 
 	if (isPropertyNode(node)) {
 		const key = syntax.PROPERTY(node.key.raw);
-		
-		// Update key location if needed
-		if (updateLocations) {
-			node.key.loc.start.line = line;
-			node.key.loc.start.column = column;
-			node.key.loc.end.line = line;
-			node.key.loc.end.column = column + node.key.raw.length;
-		}
-		
-		// Calculate new position after key and colon
-		column += node.key.raw.length + 2; // +2 for ": "
-		
 		const value = stringify(node.value, {
 			depth,
 			syntax,
 			highlightNode,
-			currentLine: line,
-			currentColumn: column,
-			updateLocations,
 		});
 
 		// For property nodes, we highlight just the key in the parent's context
@@ -478,51 +355,19 @@ export function stringify(
 	}
 
 	if (isStringNode(node)) {
-		const result = applyHighlight(syntax.STRING(node.raw));
-		
-		if (updateLocations) {
-			column += node.raw.length;
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
-		
-		return result;
+		return applyHighlight(syntax.STRING(node.raw));
 	}
 
 	if (isNumberNode(node)) {
-		const result = applyHighlight(syntax.NUMBER(node.raw));
-		
-		if (updateLocations) {
-			column += node.raw.length;
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
-		
-		return result;
+		return applyHighlight(syntax.NUMBER(node.raw));
 	}
 
 	if (isBooleanNode(node)) {
-		const result = applyHighlight(syntax.BOOLEAN(node.raw));
-		
-		if (updateLocations) {
-			column += node.raw.length;
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
-		
-		return result;
+		return applyHighlight(syntax.BOOLEAN(node.raw));
 	}
 
 	if (isNullNode(node)) {
-		const result = applyHighlight(syntax.NULL(node.raw));
-		
-		if (updateLocations) {
-			column += 4; // Length of "null"
-			node.loc.end.line = line;
-			node.loc.end.column = column;
-		}
-		
-		return result;
+		return applyHighlight(syntax.NULL(node.raw));
 	}
 
 	throw new Error(`Unsupported node type: ${node.type}`);
