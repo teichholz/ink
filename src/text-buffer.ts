@@ -74,6 +74,7 @@ export class TextBuffer {
 		const start = this._buffer.getOffsetAt(line, col);
 		this._buffer.delete(start, cnt);
 		this._buffer.insert(start, newContent);
+		this.changed++;
 	}
 
 	insert(offset: number, content: string): void {

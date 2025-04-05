@@ -127,7 +127,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					const ecol = node.value.loc.end.column;
 					logger.info({line, scol, ecol}, 'Replacing region');
 					content.replace(line, scol, 1, 'yoooo, i just inserted this text');
-					setContent(content);
+					// Create a new instance to trigger React state update
+					setContent(new TextBuffer(content.getText().join('\n')));
 				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
@@ -237,9 +238,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	// Update json tree when content changes
 	useEffect(() => {
-		logger.info('Reparsing content');
+		logger.info('Reparsing content due to content change');
 		reparseContent();
-	}, [content]);
+	}, [content, content?.changed]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
