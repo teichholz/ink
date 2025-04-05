@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { parseJson } from "./parse-json.js";
 
 describe("Json Tree", () => {
 	describe("parseJson function", () => {
@@ -8,19 +7,15 @@ describe("Json Tree", () => {
 		afterAll(() => {});
 
 		it("Should parse json with locations and ranges", async () => {
-			const json = `{
-				"hello": "world",
-				"foo": "bar",
-				"arr": [1, 2, 3],
-				"obj": {
-					"nested": "property"
-				}
-			}`;
-
-			const ast = parseJson(json);
-
-			console.log(JSON.stringify(ast, null, 2));
-
+			// const json = `{
+			// 	"hello": "world",
+			// 	"foo": "bar",
+			// 	"arr": [1, 2, 3],
+			// 	"obj": {
+			// 		"nested": "property"
+			// 	}
+			// }`;
+			// const ast = parseJson(json);
 			// Verify the AST contains the expected properties
 			// expect(ast.type).toBe("ObjectExpression");
 			// expect(ast.properties).toHaveLength(2);

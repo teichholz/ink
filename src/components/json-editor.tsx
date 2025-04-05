@@ -15,6 +15,7 @@ import {
 	isPropertyNode,
 	isStringNode,
 	JsonNode,
+	JsonPropertyNode,
 	JsonValueNode,
 	parseJson,
 	parseJsonFile,
@@ -118,7 +119,16 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			{
 				key: createKeyCombo('r'),
 				label: 'Edit string',
-				action: () => {},
+				action: () => {
+					logger.info('Editing string');
+					const node = navigableNodes[cursorPosition] as JsonPropertyNode;
+					const line = node.value.loc.start.line;
+					const scol = node.value.loc.start.column + 1;
+					const ecol = node.value.loc.end.column;
+					logger.info({line, scol, ecol}, 'Replacing region');
+					content.replace(line, scol, 1, 'yoooo, i just inserted this text');
+					setContent(content);
+				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
 					const isString = isStringNode(node);
@@ -140,7 +150,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition],
+		[navigableNodes.length, cursorPosition, content.changed],
 	);
 
 	// Use keybindings hook
@@ -220,8 +230,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return;
 		}
 
-		logger.info('Set highlighted content due to file path change');
-
 		// Set the JSON tree first
 		setJsonTree(json as JsonValueNode);
 		setError(null);
@@ -229,8 +237,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	// Update json tree when content changes
 	useEffect(() => {
+		logger.info('Reparsing content');
 		reparseContent();
-	}, [content]);
+	}, [content.changed]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
