@@ -246,5 +246,5 @@ export function formatKeyBinding(keybinding: Keybinding): string {
 		);
 	}
 
-	return formattedMainKey;
+	return formattedMainKey + `: ${keybinding.label}`;
 }

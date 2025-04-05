@@ -21,6 +21,7 @@ import {
 } from '../json-tree/parse-json.js';
 import {stringify, syntaxHighlight} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
+import {TextBuffer} from '../text-buffer.js';
 
 type JsonEditorProps = {
 	/**
@@ -40,7 +41,7 @@ type JsonEditorProps = {
 };
 
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
-	const [content, setContent] = useState<string>('');
+	const [content, setContent] = useState<TextBuffer>(TextBuffer.empty());
 	const [highlightedContent, setHighlightedContent] = useState<string>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -148,7 +149,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		const loadFile = async () => {
 			if (!filePath) {
-				setContent('');
+				setContent(TextBuffer.empty());
 				setJsonTree(null);
 				setError(null);
 				return;
@@ -166,7 +167,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			// Format the JSON without syntax highlighting
 			const formattedContent = stringify(parsedJson);
-			setContent(formattedContent);
+			setContent(TextBuffer.fromString(formattedContent));
 
 			// Reparse since stringify changed the formatting and we need the correct locations
 			const [json, err2] = parseJson(formattedContent);
@@ -206,7 +207,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return;
 		}
 
-		const [json, err] = parseJson(content);
+		const [json, err] = parseJson(content.getText().join('\n'));
 
 		if (err) {
 			logger.error(

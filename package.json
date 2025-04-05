@@ -19,6 +19,7 @@
 	],
 	"dependencies": {
 		"@vscode/ripgrep": "^1.15.11",
+		"@vscode/textbuffer": "^1.0.0",
 		"acorn": "^8.14.1",
 		"config": "^3.3.12",
 		"figures": "^6.1.0",
@@ -33,7 +34,8 @@
 		"pino": "^9.6.0",
 		"react": "^18.2.0",
 		"smol-toml": "^1.3.1",
-		"strip-ansi": "^7.1.0"
+		"strip-ansi": "^7.1.0",
+		"vscode-textbuffer": "^1.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
