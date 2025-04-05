@@ -270,6 +270,9 @@ export type StringifyOptions = {
 	highlightNode?: (node: JsonNode) => boolean;
 };
 
+/**
+ * Converts a JSON node to a formatted string
+ */
 export function stringify(
 	node: JsonNode,
 	options: StringifyOptions = {},
@@ -371,4 +374,29 @@ export function stringify(
 	}
 
 	throw new Error(`Unsupported node type: ${node.type}`);
+}
+
+/**
+ * Syntax highlighting options
+ */
+export type SyntaxHighlightOptions = {
+	syntax?: typeof SyntaxHighlighting;
+	highlightNode?: (node: JsonNode) => boolean;
+};
+
+/**
+ * Parses a JSON string and returns a syntax-highlighted version
+ */
+export function syntaxHighlight(
+	jsonString: string,
+	options: SyntaxHighlightOptions = {},
+): string {
+	try {
+		const jsonNode = parseJson(jsonString);
+		return stringify(jsonNode, options);
+	} catch (error) {
+		// If parsing fails, return the original string without highlighting
+		console.error("Failed to parse JSON for syntax highlighting:", error);
+		return jsonString;
+	}
 }
