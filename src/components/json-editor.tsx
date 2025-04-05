@@ -150,7 +150,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition, content.changed],
+		[navigableNodes.length, cursorPosition, content],
 	);
 
 	// Use keybindings hook
@@ -239,7 +239,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		logger.info('Reparsing content');
 		reparseContent();
-	}, [content.changed]);
+	}, [content]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
