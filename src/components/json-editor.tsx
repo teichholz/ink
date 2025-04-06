@@ -1,8 +1,8 @@
 import {Box, Text} from 'ink';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
-import { useAtom } from 'jotai';
-import { addStringChangeAtom } from '../atoms/json-editor-atoms.js';
+import {useAtom} from 'jotai';
+import {addStringChangeAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
 	isArrayNode,
@@ -296,20 +296,30 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						}}
 						onStringInputSubmit={(node: JsonNode) => {
 							logger.info('Submitted string');
-							
-							// Find the current path for this node
-							const nodeEntry = navigableNodes.find(entry => entry.node === node);
+
+							const nodeEntry = navigableNodes.find(entry => {
+								if (isPropertyNode(entry.node)) {
+									return entry.node.value === node;
+								} else if (isStringNode(entry.node)) {
+									return entry.node === node;
+								}
+
+								return false;
+							});
+
 							const nodePath = nodeEntry?.path || 'unknown';
-							
+
 							if (isStringNode(node)) {
-								// Save the change to the global atom
 								addStringChange({
 									path: nodePath,
-									value: node.value
+									value: node.value,
 								});
-								logger.info({ path: nodePath, value: node.value }, 'Saved string change');
+								logger.info(
+									{path: nodePath, value: node.value},
+									'Saved string change',
+								);
 							}
-							
+
 							setFocusedNode(null);
 						}}
 					/>

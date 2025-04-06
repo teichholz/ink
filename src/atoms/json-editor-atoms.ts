@@ -18,6 +18,16 @@ export const addStringChangeAtom = atom(
 			...newChange,
 			timestamp: Date.now(),
 		};
-		set(stringChangesAtom, [...get(stringChangesAtom), change]);
+
+		// Get current changes
+		const currentChanges = get(stringChangesAtom);
+
+		// Filter out any previous changes to the same path
+		const filteredChanges = currentChanges.filter(
+			(existingChange) => existingChange.path !== newChange.path,
+		);
+
+		// Add the new change
+		set(stringChangesAtom, [...filteredChanges, change]);
 	},
 );
