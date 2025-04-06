@@ -1,4 +1,4 @@
-import { JSONPath } from "jsonpath-plus";
+import { compile } from "jsonpointer";
 import { logger } from "./logger.js";
 import { Res, type Result } from "./types.js";
 
@@ -10,7 +10,7 @@ interface JSONObject {
 
 interface JSONArray extends Array<JSONValue> {}
 
-export function getJsonPath(
+export function getJsonPointer(
 	json: JSONValue,
 	path: string,
 	replacements: Map<string, string>,
@@ -23,62 +23,25 @@ export function getJsonPath(
 
 	logger.debug(`Augmented path: ${augmentedPath}`);
 
-	return JSONPath({
-		path: augmentedPath,
-		json: json,
-		wrap: false,
-		sandbox: replacements,
-	});
-}
+	const { get } = compile(augmentedPath);
 
-export function modifyJsonPath(
-	json: JSONValue,
-	update: string,
-	jsonPath: string,
-): Result<JSONValue, Error> {
-	if (!jsonPath) {
-		return Res.err(new Error("Invalid JSON path: must not be empty"));
-	}
-
-	// Split the path, handling array notation correctly
-	const pathParts = jsonPath.replace(/\[(\d+)\]/g, ".$1").split(".");
-	
-	return innerModifyJson(json, update, pathParts);
+	return get(json as any);
 }
 
 /**
- * Shallow modify a JSON object at a given json path
+ * Shallow modify a JSON value at a given path.
  */
-function innerModifyJson(
-	json: JSONValue,
-	update: string,
-	path: string[],
-): Result<JSONValue, Error> {
-	if (path.length === 0) {
-		return Res.err(new Error("Invalid JSON path: must not be empty"));
+export function modifyJsonPointer<T extends JSONValue>(
+	json: T,
+	update: any,
+	pointer: string,
+): Result<T, Error> {
+	if (!pointer || pointer === "") {
+		return Res.ok(update as T);
 	}
 
-	if (typeof json === "string" && path.join() === "$") {
-		return Res.ok(update);
-	}
+	const { set } = compile(pointer);
+	set(json as any, update);
 
-	if (typeof json !== "object") {
-		return Res.err(new Error("Invalid JSON: json must be an object"));
-	}
-
-	let restPath = path;
-	let obj = json as unknown as any;
-	while (restPath.length > 1) {
-		const parsed = Number.parseInt(restPath[0]);
-		const ptr = parsed ? parsed : restPath[0];
-		restPath = restPath.slice(1);
-		obj = obj[ptr];
-
-		if (typeof obj !== "object") {
-			return Res.err(new Error(`Invalid JSON path: ${path.join(".")}`));
-		}
-	}
-
-	obj[restPath[0]] = update;
 	return Res.ok(json);
 }

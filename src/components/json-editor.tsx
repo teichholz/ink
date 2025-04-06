@@ -52,7 +52,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
 		index: 0,
-		path: '',
+		path: '/',
 	});
 	const [navigableNodes, setNavigableNodes] = useState<
 		Array<{node: JsonNode; path: string}>
@@ -61,7 +61,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	// Function to collect all navigable nodes from the JSON tree with their paths
 	const collectNavigableNodes = (
 		node: JsonNode | null,
-		currentPath: string = '$',
+		currentPath: string = '/',
 	): Array<{node: JsonNode; path: string}> => {
 		if (!node) return [];
 
@@ -72,7 +72,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		if (isObjectNode(node)) {
 			// Add all property keys (but not primitive values)
 			node.properties.forEach((prop, _index) => {
-				const propPath = `${currentPath}.${prop.key.value}`;
+				const propPath = `${currentPath}/${prop.key.value}`;
 				nodes.push({node: prop, path: propPath});
 
 				// For non-primitive values, add their children too
@@ -86,7 +86,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		} else if (isArrayNode(node)) {
 			// Add all array elements
 			node.elements.forEach((elem, index) => {
-				const elemPath = `${currentPath}[${index}]`;
+				const elemPath = `${currentPath}/${index}`;
 				nodes.push(...collectNavigableNodes(elem, elemPath));
 			});
 		}
@@ -223,7 +223,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-			setCursorPosition({index: 0, path: '$'});
+			setCursorPosition({index: 0, path: '/'});
 		};
 
 		loadFile();

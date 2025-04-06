@@ -29,6 +29,7 @@
 		"ink": "^4.1.0",
 		"jotai": "^2.12.2",
 		"jsonpath-plus": "^10.3.0",
+		"jsonpointer": "^5.0.1",
 		"locate-path": "^7.2.0",
 		"meow": "^11.0.0",
 		"npm": "^11.2.0",

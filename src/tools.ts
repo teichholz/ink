@@ -8,7 +8,7 @@ import {
 	execChannel,
 } from "./channel.js";
 import type { Config } from "./config.js";
-import { getJsonPath } from "./jsonpath.js";
+import { getJsonPointer } from "./jsonpath.js";
 import { logger } from "./logger.js";
 import { findPathTools } from "./os.js";
 import { Res, type Result } from "./types.js";
@@ -48,7 +48,7 @@ export async function extractLabelsFromFile(
 
 		const json = JSON.parse(await readFile(file.path, "utf8"));
 
-		const root = getJsonPath(
+		const root = getJsonPointer(
 			json,
 			jsonPath,
 			new Map([["%lang", file.language]]),

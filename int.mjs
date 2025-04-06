@@ -3,5 +3,5 @@ export default {
 	labelFilePattern: ".+(en|de)\\.json",
 	languagePriority: ["en", "de"],
 	mustHaveLabelFiles: ["en", "de"],
-	jsonPath: "$.%lang",
+	jsonPath: "/%lang",
 };
