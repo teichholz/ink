@@ -58,14 +58,14 @@ export type SyntaxHighlightOptions = {
 	syntax?: typeof DefaultHighlighting;
 
 	/**
-	 * Highlight node background when the curssor points to it
+	 * Node to highlight with background color
 	 */
-	highlightNode?: (node: JsonNode) => boolean;
+	highlightedNode?: JsonNode | null;
 
 	/**
-	 * Whether to focus a string node for editing
+	 * Node to focus for string input
 	 */
-	focusStringInput?: (node: JsonNode) => boolean;
+	focusedNode?: JsonNode | null;
 
 	/**
 	 * Callback when a string node has changed
@@ -84,8 +84,8 @@ export type SyntaxHighlightOptions = {
 export function SyntaxHighlighter({
 	node,
 	syntax = DefaultHighlighting,
-	highlightNode = () => false,
-	focusStringInput = () => false,
+	highlightedNode = null,
+	focusedNode = null,
 	onStringInputChange = () => {},
 	onStringInputSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
@@ -96,8 +96,8 @@ export function SyntaxHighlighter({
 	return applyHighlighting(0, {
 		node,
 		syntax,
-		highlightNode,
-		focusStringInput,
+		highlightedNode,
+		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
 	});
@@ -113,19 +113,19 @@ function applyHighlighting(
 	const {
 		node,
 		syntax,
-		highlightNode,
-		focusStringInput,
+		highlightedNode,
+		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
 	} = props;
 
 	const indent = '  '.repeat(depth);
-	const isHighlighted = highlightNode(node);
+	const isHighlighted = node === highlightedNode;
 
 	const staticOpts = {
 		syntax,
-		highlightNode,
-		focusStringInput,
+		highlightedNode,
+		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
 	};
@@ -146,7 +146,7 @@ function applyHighlighting(
 			});
 
 			// If the property node is highlighted, highlight just the key
-			const propHighlighted = highlightNode(prop);
+			const propHighlighted = prop === highlightedNode;
 			const formattedKey = propHighlighted ? (
 				<Text backgroundColor="gray">{key}</Text>
 			) : (
@@ -259,9 +259,10 @@ function applyHighlighting(
 		return syntax.STRING({
 			value: node.value,
 			backgroundColor: isHighlighted ? 'grey' : '',
+			focus: node === focusedNode,
 			onChange: string => onStringInputChange(node, string),
 			onSubmit: () => onStringInputSubmit(node),
-			focus: focusStringInput?.(node),
+			// key: `string-${node.range[0]}-${node.range[1]}-${node.value}`,
 		});
 	}
 

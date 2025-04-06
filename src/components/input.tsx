@@ -41,6 +41,11 @@ export type TextInputProps = {
 	readonly backgroundColor?: string;
 
 	/**
+	 * Key to force re-render
+	 */
+	readonly key?: string;
+
+	/**
 	 * Function to call when value updates.
 	 */
 	readonly onChange: (value: string) => void;

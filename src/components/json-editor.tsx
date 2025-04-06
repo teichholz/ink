@@ -240,18 +240,13 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
-						highlightNode={(node: JsonNode): boolean => {
-							if (
-								navigableNodes.length === 0 ||
-								cursorPosition >= navigableNodes.length
-							) {
-								return false;
-							}
-							return node === navigableNodes[cursorPosition];
-						}}
-						focusStringInput={
-							focusedNode ? node => node === focusedNode : undefined
+						highlightedNode={
+							navigableNodes.length > 0 &&
+							cursorPosition < navigableNodes.length
+								? navigableNodes[cursorPosition]
+								: null
 						}
+						focusedNode={focusedNode}
 						onStringInputChange={(node: JsonNode, value: string) => {
 							logger.info({value}, 'Edited value');
 
