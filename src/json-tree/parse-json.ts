@@ -21,7 +21,14 @@ export interface Position {
  * Location information for a node in the JSON AST
  */
 export interface Location {
+	/**
+	 * Start position of node. Is inclusive.
+	 */
 	start: Position;
+
+	/**
+	 * End position of node. Is exclusive.
+	 */
 	end: Position;
 }
 

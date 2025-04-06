@@ -131,7 +131,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					content.replace(
 						line,
 						scol + 1,
-						1,
+						ecol - scol - 1,
 						'yoooo, i just inserted this text',
 					);
 					// Update length to trigger reparse
