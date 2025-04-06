@@ -1,6 +1,6 @@
 import {ForegroundColorName} from 'chalk';
 import {Text} from 'ink';
-import React, {ReactNode} from 'react';
+import React, {ReactNode, useEffect} from 'react';
 import {LiteralUnion} from 'type-fest';
 import {
 	type JsonNode,
@@ -13,6 +13,7 @@ import {
 	isStringNode,
 } from '../json-tree/parse-json.js';
 import TextInput, {TextInputProps} from './input.js';
+import {logger} from '../logger.js';
 
 const DefaultHighlighting = {
 	ARRAY: (x: string) => <Text color="gray">{x}</Text>,
@@ -74,7 +75,7 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Callback when a string node is submitted
 	 */
-	onStringSubmit?: (node: JsonNode, value: string) => void;
+	onStringSubmit?: (node: JsonNode) => void;
 };
 
 /**
@@ -88,6 +89,10 @@ export function SyntaxHighlighter({
 	onStringChange = () => {},
 	onStringSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
+	useEffect(() => {
+		logger.info('SyntaxHighlighter rendered');
+	}, []);
+
 	return applyHighlighting(0, {
 		node,
 		syntax,
@@ -255,7 +260,7 @@ function applyHighlighting(
 			value: node.value,
 			backgroundColor: isHighlighted ? 'grey' : '',
 			onChange: string => onStringChange(node, string),
-			onSubmit: string => onStringSubmit(node, string),
+			onSubmit: () => onStringSubmit(node),
 			focus: focusStringInput?.(node),
 		});
 	}

@@ -46,9 +46,9 @@ export type TextInputProps = {
 	readonly onChange: (value: string) => void;
 
 	/**
-	 * Function to call when `Enter` is pressed, where first argument is a value of the input.
+	 * Function to call when `Enter` is pressed.
 	 */
-	readonly onSubmit?: (value: string) => void;
+	readonly onSubmit?: () => void;
 };
 
 function TextInput({
@@ -140,10 +140,7 @@ function TextInput({
 			}
 
 			if (key.return) {
-				if (onSubmit) {
-					onSubmit(originalValue);
-				}
-
+				onSubmit?.();
 				return;
 			}
 

@@ -1,6 +1,6 @@
 import {Box, Text} from 'ink';
 import path from 'path';
-import {ReactNode, useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
 	createKeyCombo,
 	Keybinding,
@@ -21,7 +21,6 @@ import {
 } from '../json-tree/parse-json.js';
 import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
-import {TextBuffer} from '../text-buffer.js';
 import {SyntaxHighlighter} from './syntax-highlighter.js';
 
 type JsonEditorProps = {
@@ -42,11 +41,8 @@ type JsonEditorProps = {
 };
 
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
-	const [content, setContent] = useState<TextBuffer>(TextBuffer.empty());
-	const [contentLength, setContentLength] = useState<number>(0);
-	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
-	const [highlightedContent, setHighlightedContent] = useState<ReactNode>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
+	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
 
 	const [cursorPosition, setCursorPosition] = useState<number>(0);
@@ -123,6 +119,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: createKeyCombo('r'),
 				label: 'Edit string',
 				action: () => {
+					logger.info({cursorPosition}, 'Editing string');
 					const node = navigableNodes[cursorPosition];
 					if (isStringNode(node)) {
 						setFocusedNode(node);
@@ -153,7 +150,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition, contentLength],
+		[navigableNodes.length, cursorPosition],
 	);
 
 	// Use keybindings hook
@@ -162,7 +159,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useEffect(() => {
 		const loadFile = async () => {
 			if (!filePath) {
-				setContent(TextBuffer.empty());
 				setJsonTree(null);
 				setError(null);
 				return;
@@ -180,7 +176,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			// Format the JSON without syntax highlighting
 			const formattedContent = stringify(parsedJson);
-			setContent(TextBuffer.fromString(formattedContent));
 
 			// Reparse since stringify changed the formatting and we need the correct locations
 			const [json, err2] = parseJson(formattedContent);
@@ -200,41 +195,11 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-			setHighlightedContent(<SyntaxHighlighter node={json as JsonValueNode} />);
 			setCursorPosition(0);
 		};
 
 		loadFile();
 	}, [filePath]);
-
-	const reparseContent = () => {
-		if (!content) {
-			return;
-		}
-
-		const [json, err] = parseJson(content.getText().join('\n'));
-
-		if (err) {
-			logger.error(
-				{error: err, content: content},
-				'Error parsing stringified JSON',
-			);
-			setError(err);
-			setJsonTree(null);
-			setError(err instanceof Error ? err : new Error(String(err)));
-			return;
-		}
-
-		// Set the JSON tree first
-		setJsonTree(json as JsonValueNode);
-		setError(null);
-	};
-
-	// Update json tree when content changes
-	useEffect(() => {
-		logger.info('Reparsing content due to content change');
-		reparseContent();
-	}, [contentLength]);
 
 	// Update navigable nodes when JSON tree changes
 	useEffect(() => {
@@ -245,57 +210,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		const nodes = collectNavigableNodes(jsonTree);
 		setNavigableNodes(nodes);
 	}, [jsonTree]);
-
-	// reparse and syntax highlight on change
-	useEffect(() => {
-		if (!jsonTree) {
-			return;
-		}
-
-		// Create a predicate function to highlight the node at the current cursor position
-		const highlightCurrentNode = (node: JsonNode): boolean => {
-			if (
-				navigableNodes.length === 0 ||
-				cursorPosition >= navigableNodes.length
-			) {
-				return false;
-			}
-			return node === navigableNodes[cursorPosition];
-		};
-
-		const onStringChange = (node: JsonNode, value: string) => {
-			logger.info({value}, 'Edited value');
-
-			if (isStringNode(node)) {
-				const line = node.loc.start.line;
-				const scol = node.loc.start.column + 1;
-				const ecol = node.loc.end.column;
-				logger.info({line, scol, ecol}, 'Replacing region');
-				content.replace(line, scol + 1, ecol - scol - 1, value);
-				// Update length to trigger reparse
-				setContentLength(content.length);
-			} else {
-				logger.error('Unexpected node type for onStringChange');
-			}
-		};
-
-		const onStringSubmit = (_node: JsonNode, _value: string) => {
-			logger.info('Submitting string');
-			setFocusedNode(null);
-		};
-
-		setHighlightedContent(
-			<SyntaxHighlighter
-				node={jsonTree}
-				highlightNode={highlightCurrentNode}
-				focusStringInput={
-					focusedNode ? node => node === focusedNode : undefined
-				}
-				onStringChange={onStringChange}
-				onStringSubmit={onStringSubmit}
-			/>,
-		);
-	}, [jsonTree, cursorPosition, navigableNodes, focusedNode]);
 
 	if (error) {
 		return (
@@ -314,7 +228,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		);
 	}
 
-	if (!content) {
+	if (!jsonTree) {
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Text>Loading...</Text>
@@ -327,7 +241,37 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			<Text>Editing: {path.basename(filePath)}</Text>
 			<Text>Use j/k to navigate, Esc to exit</Text>
 			<Box marginTop={1} flexDirection="column">
-				<Text>{highlightedContent}</Text>
+				<Text>
+					<SyntaxHighlighter
+						node={jsonTree}
+						highlightNode={(node: JsonNode): boolean => {
+							if (
+								navigableNodes.length === 0 ||
+								cursorPosition >= navigableNodes.length
+							) {
+								return false;
+							}
+							return node === navigableNodes[cursorPosition];
+						}}
+						focusStringInput={
+							focusedNode ? node => node === focusedNode : undefined
+						}
+						onStringChange={(node: JsonNode, value: string) => {
+							logger.info({value}, 'Edited value');
+
+							if (isStringNode(node)) {
+								node.value = value;
+								setJsonTree(jsonTree);
+							} else {
+								logger.error('Unexpected node type for onStringChange');
+							}
+						}}
+						onStringSubmit={(_node: JsonNode) => {
+							logger.info('Submitted string');
+							setFocusedNode(null);
+						}}
+					/>
+				</Text>
 			</Box>
 		</Box>
 	);
