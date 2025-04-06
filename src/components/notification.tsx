@@ -56,6 +56,7 @@ export function Notification({
 			flexDirection="column"
 			borderStyle="round"
 			borderColor={style === 'warning' ? 'red' : 'green'}
+			backgroundColor={style === 'warning' ? '#400' : '#040'}
 			padding={1}
 			width={notificationWidth}
 			height={notificationHeight}
