@@ -27,9 +27,11 @@ export const addJsonEditAtom = atom(
 
 		// Filter out any previous changes to the same path in the same file
 		const filteredChanges = currentChanges.filter(
-			(existingChange) => 
-				!(existingChange.path === newChange.path && 
-				  existingChange.filePath === newChange.filePath)
+			(existingChange) =>
+				!(
+					existingChange.path === newChange.path &&
+					existingChange.filePath === newChange.filePath
+				),
 		);
 
 		// Add the new change

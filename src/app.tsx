@@ -18,6 +18,7 @@ import {
 import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
 import {extractLabelsFromFile, find, Tools} from './tools.js';
+import {amountOfjsonEditsAtom} from './atoms/json-editor-atoms.js';
 
 type Props = {
 	name: string | undefined;
@@ -97,6 +98,7 @@ function AppContent({tools, config}: Props) {
 
 	const [activeLocalKeybindings] = useAtom(currentFocusedKeybindings);
 	const [activeGlobalKeybindings] = useAtom(globalKeybindings);
+	const [amountOfJsonEdits] = useAtom(amountOfjsonEditsAtom);
 
 	const [cols, rows] = useStdoutDimensions();
 	const {focusNext, focus, disableFocus} = useFocusManager();
@@ -247,8 +249,18 @@ function AppContent({tools, config}: Props) {
 					focusNextPane();
 				},
 			},
+			{
+				key: Key.create('w', ['ctrl']),
+				label: 'Write changes',
+				action: () => {
+					logger.info('Writing changes');
+				},
+				predicate: () => {
+					return amountOfJsonEdits > 0;
+				},
+			},
 		],
-		[hasFocus],
+		[hasFocus, amountOfJsonEdits],
 	);
 
 	// Use keybindings hook for app-level navigation
