@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import {Box, Text, useInput} from 'ink';
 import {useState} from 'react';
-import {useStdoutDimensions} from '../hooks/useStdoutDimensions.js';
 import {LiteralUnion} from 'type-fest';
+import {useStdoutDimensions} from '../hooks/useStdoutDimensions.js';
 
 export type NotificationProps = {
 	title?: string;
@@ -49,27 +49,38 @@ export function Notification({
 	const top = Math.floor((rows - notificationHeight) / 2);
 
 	return (
-		<Box
-			position="absolute"
-			marginLeft={left}
-			marginTop={top}
-			flexDirection="column"
-			borderStyle="round"
-			borderColor={style === 'warning' ? 'red' : 'green'}
-			padding={1}
-			width={notificationWidth}
-			height={notificationHeight}
-		>
-			{title && (
-				<Box marginBottom={1}>
-					<Text bold>{chalk.yellow(title)}</Text>
-				</Box>
-			)}
-			<Text>{message}</Text>
-			<Box marginTop={1}>
-				<Text dimColor>Press Enter or Escape to dismiss</Text>
+		<>
+			<Box
+				position="absolute"
+				marginLeft={left}
+				marginTop={top}
+				width={notificationWidth}
+				height={notificationHeight}
+			>
+				<Text>{' '.repeat(notificationHeight * notificationWidth)}</Text>
 			</Box>
-		</Box>
+			<Box
+				position="absolute"
+				marginLeft={left}
+				marginTop={top}
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={style === 'warning' ? 'red' : 'green'}
+				padding={1}
+				width={notificationWidth}
+				height={notificationHeight}
+			>
+				{title && (
+					<Box marginBottom={1}>
+						<Text bold>{chalk.yellow(title)}</Text>
+					</Box>
+				)}
+				<Text>{message}</Text>
+				<Box marginTop={1}>
+					<Text dimColor>Press Enter or Escape to dismiss</Text>
+				</Box>
+			</Box>
+		</>
 	);
 }
 

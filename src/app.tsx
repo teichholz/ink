@@ -101,12 +101,13 @@ function AppContent({tools, config}: Props) {
 	const [amountOfJsonEdits] = useAtom(amountOfjsonEditsAtom);
 
 	const [cols, rows] = useStdoutDimensions();
-	const {focusNext, focus, disableFocus} = useFocusManager();
+	const {focus, disableFocus} = useFocusManager();
 
 	const {showNotification, NotificationComponent} = useNotification();
 
 	useEffect(() => {
 		disableFocus();
+		focus('filter1');
 	}, []);
 
 	useEffect(() => {
@@ -220,7 +221,7 @@ function AppContent({tools, config}: Props) {
 		focus(next);
 	};
 
-	useInput(input => {
+	useInput((input, _key) => {
 		if (input == '?') {
 			logger.info('Showing vertical help');
 			const globalHelpText = `Global\n${activeGlobalKeybindings?.keybindings
@@ -265,11 +266,6 @@ function AppContent({tools, config}: Props) {
 
 	// Use keybindings hook for app-level navigation
 	useGlobalKeybindings(appKeybindings, 'app');
-
-	useEffect(() => {
-		// Set initial focus
-		focusNext();
-	}, [focusNext]);
 
 	// Filter labels based on selected files - with memoization to prevent recalculation
 	const visibleLabels = useMemo(() => {
