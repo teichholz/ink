@@ -1,6 +1,8 @@
 import {Box, Text} from 'ink';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
+import { useAtom } from 'jotai';
+import { addStringChangeAtom } from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
 	isArrayNode,
@@ -40,6 +42,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
+	const [, addStringChange] = useAtom(addStringChangeAtom);
 
 	// Define a type for cursor position that includes path information
 	type CursorPosition = {
@@ -291,8 +294,22 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								logger.error('Unexpected node type for onStringChange');
 							}
 						}}
-						onStringInputSubmit={(_node: JsonNode) => {
+						onStringInputSubmit={(node: JsonNode) => {
 							logger.info('Submitted string');
+							
+							// Find the current path for this node
+							const nodeEntry = navigableNodes.find(entry => entry.node === node);
+							const nodePath = nodeEntry?.path || 'unknown';
+							
+							if (isStringNode(node)) {
+								// Save the change to the global atom
+								addStringChange({
+									path: nodePath,
+									value: node.value
+								});
+								logger.info({ path: nodePath, value: node.value }, 'Saved string change');
+							}
+							
 							setFocusedNode(null);
 						}}
 					/>
