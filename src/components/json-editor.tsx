@@ -1,6 +1,6 @@
 import {Box, Text} from 'ink';
 import path from 'path';
-import {useEffect, useMemo, useState} from 'react';
+import {ReactNode, useEffect, useMemo, useState} from 'react';
 import {
 	createKeyCombo,
 	Keybinding,
@@ -44,7 +44,7 @@ type JsonEditorProps = {
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<TextBuffer>(TextBuffer.empty());
 	const [contentLength, setContentLength] = useState<number>(0);
-	const [highlightedContent, setHighlightedContent] = useState<string>('');
+	const [highlightedContent, setHighlightedContent] = useState<ReactNode>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
 
@@ -209,6 +209,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			// Initialize the highlighted content immediately with no highlights yet
 			const initialHighlightedContent = syntaxHighlight(json as JsonValueNode, {
+				useReactComponents: true,
 				highlightNode: () => false,
 			});
 			setHighlightedContent(initialHighlightedContent);
@@ -277,6 +278,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		};
 
 		const highlightedContent = syntaxHighlight(jsonTree, {
+			useReactComponents: true,
 			highlightNode: highlightCurrentNode,
 		});
 
