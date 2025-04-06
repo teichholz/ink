@@ -2,12 +2,6 @@ import { JSONPath } from "jsonpath-plus";
 import { logger } from "./logger.js";
 import { Res, type Result } from "./types.js";
 
-namespace Json {
-	export function parse(json: string): JSONValue {
-		return JSON.parse(json);
-	}
-}
-
 type JSONValue = string | number | boolean | null | JSONArray | JSONObject;
 
 interface JSONObject {
@@ -19,91 +13,60 @@ interface JSONArray extends Array<JSONValue> {}
 export function getJsonPath(
 	json: JSONValue,
 	path: string,
-	replacements: Record<string, string>,
+	replacements: Map<string, string>,
 ): object[] {
+	const regex = new RegExp(replacements.keys().toArray().join("|"), "g");
 	const augmentedPath = path.replaceAll(
-		new RegExp(Object.keys(replacements).join("|"), "g"),
-		(match) => {
-			return replacements[match];
-		},
+		regex,
+		(match) => replacements.get(match) ?? "",
 	);
 
 	logger.debug(`Augmented path: ${augmentedPath}`);
 
-	return JSONPath({ path: augmentedPath, json: json });
+	return JSONPath({
+		path: augmentedPath,
+		json: json,
+		wrap: false,
+		sandbox: replacements,
+	});
 }
-
-type ValueModification = string;
 
 export function modifyJson(
 	json: JSONValue,
-	update: ValueModification,
+	update: string,
 	jsonPath: string,
 ): Result<JSONValue, Error> {
 	const arr = jsonPath.split(".");
-	if (arr?.[0] !== "$") {
-		return Res.err(new Error("Invalid JSON path: must start with $"));
-	}
 
-	return Res.ok(innerModifyJson(json, update, arr));
+	return innerModifyJson(json, update, arr);
 }
 
 function innerModifyJson(
 	json: JSONValue,
-	update: ValueModification,
+	update: string,
 	path: string[],
-): JSONValue {
-	// Base case: if we've reached the end of the path, return the update
+): Result<JSONValue, Error> {
+	if (path.length === 0) {
+		return Res.err(new Error("Invalid JSON path: must not be empty"));
+	}
+
+	if (typeof json === "string" && path.join() === "$") {
+		return Res.ok(update);
+	}
+
+	if (typeof json !== "object") {
+		return Res.err(new Error("Invalid JSON: json must be an object"));
+	}
+
+	const parsed = Number.parseInt(path[0]);
+	const ptr = parsed ? parsed : path[0];
+
 	if (path.length === 1) {
-		return update;
+		if (Array.isArray(json) && typeof ptr === "number") {
+		}
+
+		return Res.ok(update);
 	}
 
-	// Skip the first element ($ or already processed part)
-	const currentPath = path[1];
-	const remainingPath = path.slice(1);
-
-	// Handle array indices (numeric paths)
-	const isArrayIndex = !isNaN(Number(currentPath));
-	
-	if (Array.isArray(json) && isArrayIndex) {
-		const index = Number(currentPath);
-		const result = [...json];
-		
-		if (remainingPath.length === 1) {
-			// We're at the target, update the value
-			result[index] = update;
-		} else {
-			// Continue traversing
-			result[index] = innerModifyJson(
-				result[index] as JSONValue,
-				update,
-				remainingPath
-			);
-		}
-		
-		return result;
-	} 
-	// Handle object properties
-	else if (typeof json === 'object' && json !== null && !Array.isArray(json)) {
-		const result = { ...json as JSONObject };
-		
-		if (remainingPath.length === 1) {
-			// We're at the target, update the value
-			result[currentPath] = update;
-		} else {
-			// Continue traversing
-			result[currentPath] = innerModifyJson(
-				result[currentPath] as JSONValue,
-				update,
-				remainingPath
-			);
-		}
-		
-		return result;
-	}
-	
-	// If we can't modify the path (e.g., trying to access a property of a primitive),
-	// return the original value
-	logger.warn(`Cannot modify path ${path.join('.')} in JSON`);
-	return json;
+	return Res.err(new Error(`Invalid JSON path: ${path.join(".")}`));
 }
