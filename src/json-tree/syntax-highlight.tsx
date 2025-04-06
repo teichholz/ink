@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import {Text} from 'ink';
 import React, {ReactNode} from 'react';
 import TextInput from '../components/input.js';
@@ -13,43 +12,7 @@ import {
 	isStringNode,
 } from './parse-json.js';
 
-type SyntaxHighlightingText = {
-	PROPERTY: (x: string) => string;
-	STRING: (x: string) => string;
-	NUMBER: (x: string) => string;
-	BOOLEAN: (x: string) => string;
-	NULL: (x: string) => string;
-	ARRAY: (x: string) => string;
-	OBJECT: (x: string) => string;
-};
-
-type SyntaxHighlightingReact = {
-	PROPERTY: (x: string) => ReactNode;
-	STRING: (
-		x: string,
-		node: JsonNode,
-		onChange?: (value: string) => void,
-	) => ReactNode;
-	NUMBER: (x: string) => ReactNode;
-	BOOLEAN: (x: string) => ReactNode;
-	NULL: (x: string) => ReactNode;
-	ARRAY: (x: string) => ReactNode;
-	OBJECT: (x: string) => ReactNode;
-};
-
-type SyntaxHighlighting = SyntaxHighlightingText | SyntaxHighlightingReact;
-
-const ChalkHighlighting: SyntaxHighlightingText = {
-	PROPERTY: chalk.blue,
-	STRING: chalk.green,
-	NUMBER: chalk.yellow,
-	BOOLEAN: chalk.yellow,
-	NULL: chalk.red,
-	ARRAY: chalk.grey,
-	OBJECT: chalk.grey,
-};
-
-const ReactHighlighting: SyntaxHighlightingReact = {
+type SyntaxHighlighting = {
 	PROPERTY: (x: string) => <Text color="blue">{x}</Text>,
 	STRING: (x: string, _node: JsonNode, onChange?: (value: string) => void) => {
 		// Extract the actual string value without quotes
@@ -80,7 +43,6 @@ export type SyntaxHighlightOptions = {
 	syntax?: SyntaxHighlighting;
 	highlightNode?: (node: JsonNode) => boolean;
 	onStringChange?: (node: JsonNode, value: string) => void;
-	useReactComponents?: boolean;
 };
 
 /**
@@ -89,10 +51,8 @@ export type SyntaxHighlightOptions = {
 export function syntaxHighlight(
 	node: JsonNode,
 	options: SyntaxHighlightOptions = {},
-): string | ReactNode {
-	const useReact = options.useReactComponents ?? false;
-	const syntax =
-		options.syntax ?? (useReact ? ReactHighlighting : ChalkHighlighting);
+): ReactNode {
+	const syntax = options.syntax ?? DefaultHighlighting;
 	const highlightNode = options.highlightNode ?? (() => false);
 	const onStringChange = options.onStringChange;
 
@@ -101,7 +61,6 @@ export function syntaxHighlight(
 		syntax,
 		highlightNode,
 		onStringChange,
-		useReact,
 	});
 }
 
@@ -115,20 +74,16 @@ function applyHighlighting(
 		syntax: SyntaxHighlighting;
 		highlightNode: (node: JsonNode) => boolean;
 		onStringChange?: (node: JsonNode, value: string) => void;
-		useReact: boolean;
 	},
-): string | ReactNode {
-	const {depth, syntax, highlightNode, onStringChange, useReact} = options;
+): ReactNode {
+	const {depth, syntax, highlightNode, onStringChange} = options;
 	const indent = '  '.repeat(depth);
 	const isHighlighted = highlightNode(node);
 
 	// Helper to apply highlighting if needed
-	const applyHighlight = (text: string | ReactNode) => {
-		if (typeof text === 'string' && !useReact) {
-			return isHighlighted ? chalk.bgGray(text) : text;
-		}
+	const applyHighlight = (element: ReactNode) => {
 		// For React nodes, we'll handle highlighting in the component
-		return text;
+		return element;
 	};
 
 	if (isObjectNode(node)) {
@@ -138,89 +93,59 @@ function applyHighlighting(
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		if (useReact) {
-			// React version
-			const properties = node.properties.map(prop => {
-				const key = syntax.PROPERTY(prop.key.raw);
-				const value = applyHighlighting(prop.value, {
-					depth: depth + 1,
-					syntax,
-					highlightNode,
-					onStringChange,
-					useReact,
-				});
-
-				// If the property node is highlighted, highlight just the key
-				const propHighlighted = highlightNode(prop);
-				const formattedKey = propHighlighted ? (
-					<Text backgroundColor="gray">{key}</Text>
-				) : (
-					key
-				);
-
-				return (
-					<React.Fragment key={prop.key.value}>
-						<Text>{childIndent}</Text>
-						{formattedKey}
-						<Text>: </Text>
-						{value}
-					</React.Fragment>
-				);
+		// React version
+		const properties = node.properties.map(prop => {
+			const key = syntax.PROPERTY(prop.key.raw);
+			const value = applyHighlighting(prop.value, {
+				depth: depth + 1,
+				syntax,
+				highlightNode,
+				onStringChange,
 			});
 
-			const openBrace = syntax.OBJECT('{\n');
-			const closeBrace = syntax.OBJECT('}');
+			// If the property node is highlighted, highlight just the key
+			const propHighlighted = highlightNode(prop);
+			const formattedKey = propHighlighted ? (
+				<Text backgroundColor="gray">{key}</Text>
+			) : (
+				key
+			);
 
 			return (
-				<React.Fragment>
-					{isHighlighted ? (
-						<Text backgroundColor="gray">{openBrace}</Text>
-					) : (
-						openBrace
-					)}
-					{properties.map((prop, i) => (
-						<React.Fragment key={i}>
-							{prop}
-							{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
-							{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
-						</React.Fragment>
-					))}
-					<Text>{indent}</Text>
-					{isHighlighted ? (
-						<Text backgroundColor="gray">{closeBrace}</Text>
-					) : (
-						closeBrace
-					)}
+				<React.Fragment key={prop.key.value}>
+					<Text>{childIndent}</Text>
+					{formattedKey}
+					<Text>: </Text>
+					{value}
 				</React.Fragment>
 			);
-		} else {
-			// String version
-			const properties = node.properties
-				.map(prop => {
-					const key = syntax.PROPERTY(prop.key.raw);
-					const value = applyHighlighting(prop.value, {
-						depth: depth + 1,
-						syntax,
-						highlightNode,
-						onStringChange,
-						useReact,
-					}) as string;
+		});
 
-					// If the property node is highlighted, highlight just the key
-					const propHighlighted = highlightNode(prop);
-					const formattedKey = propHighlighted ? chalk.bgGray(key) : key;
+		const openBrace = syntax.OBJECT('{\n');
+		const closeBrace = syntax.OBJECT('}');
 
-					return `${childIndent}${formattedKey}: ${value}`;
-				})
-				.join(',\n');
-
-			const openBrace = syntax.OBJECT('{\n');
-			const closeBrace = `\n${indent}${syntax.OBJECT('}')}`;
-
-			return (
-				applyHighlight(openBrace) + properties + applyHighlight(closeBrace)
-			);
-		}
+		return (
+			<React.Fragment>
+				{isHighlighted ? (
+					<Text backgroundColor="gray">{openBrace}</Text>
+				) : (
+					openBrace
+				)}
+				{properties.map((prop, i) => (
+					<React.Fragment key={i}>
+						{prop}
+						{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
+						{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
+					</React.Fragment>
+				))}
+				<Text>{indent}</Text>
+				{isHighlighted ? (
+					<Text backgroundColor="gray">{closeBrace}</Text>
+				) : (
+					closeBrace
+				)}
+			</React.Fragment>
+		);
 	}
 
 	if (isArrayNode(node)) {
@@ -230,72 +155,48 @@ function applyHighlighting(
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		if (useReact) {
-			// React version
-			const elements = node.elements.map(elem => {
-				const value = applyHighlighting(elem, {
-					depth: depth + 1,
-					syntax,
-					highlightNode,
-					onStringChange,
-					useReact,
-				});
-
-				return (
-					<React.Fragment>
-						<Text>{childIndent}</Text>
-						{value}
-					</React.Fragment>
-				);
+		// React version
+		const elements = node.elements.map(elem => {
+			const value = applyHighlighting(elem, {
+				depth: depth + 1,
+				syntax,
+				highlightNode,
+				onStringChange,
 			});
-
-			const openBracket = syntax.ARRAY('[\n');
-			const closeBracket = syntax.ARRAY(']');
 
 			return (
 				<React.Fragment>
-					{isHighlighted ? (
-						<Text backgroundColor="gray">{openBracket}</Text>
-					) : (
-						openBracket
-					)}
-					{elements.map((elem, i) => (
-						<React.Fragment key={i}>
-							{elem}
-							{i < node.elements.length - 1 && <Text>,{'\n'}</Text>}
-							{i === node.elements.length - 1 && <Text>{'\n'}</Text>}
-						</React.Fragment>
-					))}
-					<Text>{indent}</Text>
-					{isHighlighted ? (
-						<Text backgroundColor="gray">{closeBracket}</Text>
-					) : (
-						closeBracket
-					)}
+					<Text>{childIndent}</Text>
+					{value}
 				</React.Fragment>
 			);
-		} else {
-			// String version
-			const elements = node.elements
-				.map(
-					elem =>
-						`${childIndent}${applyHighlighting(elem, {
-							depth: depth + 1,
-							syntax,
-							highlightNode,
-							onStringChange,
-							useReact,
-						})}`,
-				)
-				.join(',\n');
+		});
 
-			const openBracket = syntax.ARRAY('[\n');
-			const closeBracket = `\n${indent}${syntax.ARRAY(']')}`;
+		const openBracket = syntax.ARRAY('[\n');
+		const closeBracket = syntax.ARRAY(']');
 
-			return (
-				applyHighlight(openBracket) + elements + applyHighlight(closeBracket)
-			);
-		}
+		return (
+			<React.Fragment>
+				{isHighlighted ? (
+					<Text backgroundColor="gray">{openBracket}</Text>
+				) : (
+					openBracket
+				)}
+				{elements.map((elem, i) => (
+					<React.Fragment key={i}>
+						{elem}
+						{i < node.elements.length - 1 && <Text>,{'\n'}</Text>}
+						{i === node.elements.length - 1 && <Text>{'\n'}</Text>}
+					</React.Fragment>
+				))}
+				<Text>{indent}</Text>
+				{isHighlighted ? (
+					<Text backgroundColor="gray">{closeBracket}</Text>
+				) : (
+					closeBracket
+				)}
+			</React.Fragment>
+		);
 	}
 
 	if (isPropertyNode(node)) {
@@ -305,36 +206,25 @@ function applyHighlighting(
 			syntax,
 			highlightNode,
 			onStringChange,
-			useReact,
 		});
 
 		// For property nodes, we highlight just the key in the parent's context
-		if (useReact) {
-			return (
-				<React.Fragment>
-					{key}
-					<Text>: </Text>
-					{value}
-				</React.Fragment>
-			);
-		} else {
-			return `${key}: ${value}`;
-		}
+		return (
+			<React.Fragment>
+				{key}
+				<Text>: </Text>
+				{value}
+			</React.Fragment>
+		);
 	}
 
 	if (isStringNode(node)) {
-		if (useReact && 'STRING' in syntax && typeof syntax.STRING === 'function') {
-			// For React components, we pass the node and onChange handler
-			const reactSyntax = syntax as SyntaxHighlightingReact;
-			const handleChange = onStringChange
-				? (newValue: string) => onStringChange(node, newValue)
-				: undefined;
+		// For React components, we pass the node and onChange handler
+		const handleChange = onStringChange
+			? (newValue: string) => onStringChange(node, newValue)
+			: undefined;
 
-			return applyHighlight(reactSyntax.STRING(node.raw, node, handleChange));
-		} else {
-			const textSyntax = syntax as SyntaxHighlightingText;
-			return applyHighlight(textSyntax.STRING(node.raw));
-		}
+		return applyHighlight(syntax.STRING(node.raw, node, handleChange));
 	}
 
 	if (isNumberNode(node)) {
