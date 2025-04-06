@@ -8,7 +8,7 @@ import {useNotification} from './components/notification.js';
 import {FilePreview, LabelPreview} from './components/preview.js';
 import {Config} from './config.js';
 import {
-	createKeyCombo,
+	Key,
 	currentFocusedKeybindings,
 	formatKeyBinding,
 	globalKeybindings,
@@ -240,7 +240,7 @@ function AppContent({tools, config}: Props) {
 	const appKeybindings = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: createKeyCombo('', ['tab']),
+				key: Key.create('', ['tab']),
 				label: 'Focus next',
 				action: () => {
 					logger.info('Focusing next');

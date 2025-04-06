@@ -1,11 +1,7 @@
 import {Box, Text} from 'ink';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
-import {
-	createKeyCombo,
-	Keybinding,
-	useKeybindings,
-} from '../hooks/useKeybindings.js';
+import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
 	isArrayNode,
 	isBooleanNode,
@@ -90,7 +86,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const keybindings = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: createKeyCombo('j'),
+				key: Key.create('j'),
 				label: 'Move cursor down',
 				action: () => {
 					if (navigableNodes.length > 0) {
@@ -103,7 +99,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 			{
-				key: createKeyCombo('k'),
+				key: Key.create('k'),
 				label: 'Move cursor up',
 				action: () => {
 					if (navigableNodes.length > 0) {
@@ -116,7 +112,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 			{
-				key: createKeyCombo('r'),
+				key: Key.create('r'),
 				label: 'Edit string',
 				action: () => {
 					logger.info({cursorPosition}, 'Editing string');
@@ -141,7 +137,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 			{
-				key: createKeyCombo('', ['escape']),
+				key: Key.modifier('escape'),
 				label: 'Leave json editor',
 				action: () => {
 					logger.info('Leaving json editor');
@@ -260,8 +256,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 							logger.info({value}, 'Edited value');
 
 							if (isStringNode(node)) {
+								// Create a new copy of the JSON tree to trigger re-render
+								const updatedTree = {...jsonTree};
 								node.value = value;
-								setJsonTree(jsonTree);
+								setJsonTree(updatedTree);
 							} else {
 								logger.error('Unexpected node type for onStringChange');
 							}

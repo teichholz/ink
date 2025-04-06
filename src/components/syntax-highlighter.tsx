@@ -91,7 +91,7 @@ export function SyntaxHighlighter({
 }: SyntaxHighlightOptions): ReactNode {
 	useEffect(() => {
 		logger.info('SyntaxHighlighter rendered');
-	}, []);
+	}, [node]);
 
 	return applyHighlighting(0, {
 		node,

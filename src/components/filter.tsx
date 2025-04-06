@@ -4,11 +4,7 @@ import Fuse from 'fuse.js';
 import {Box, DOMElement, measureElement, Text} from 'ink';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import type {Simplify} from 'type-fest';
-import {
-	createKeyCombo,
-	Keybinding,
-	useKeybindings,
-} from '../hooks/useKeybindings.js';
+import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
 import {logger} from '../logger.js';
 import Scrollbar from './scrollbar.js';
@@ -144,7 +140,7 @@ export default function Filter<T extends FilterItem>({
 	const keybindings: Keybinding[] = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: createKeyCombo('n', ['ctrl']),
+				key: Key.create('n', ['ctrl']),
 				label: 'Move selection down',
 				action: () => {
 					setSelectedIndex(prev => {
@@ -155,7 +151,7 @@ export default function Filter<T extends FilterItem>({
 				showInHelp: true,
 			},
 			{
-				key: createKeyCombo('p', ['ctrl']),
+				key: Key.create('p', ['ctrl']),
 				label: 'Move selection up',
 				action: () => {
 					setSelectedIndex(prev => {
@@ -166,7 +162,7 @@ export default function Filter<T extends FilterItem>({
 				showInHelp: true,
 			},
 			{
-				key: createKeyCombo('', ['return']),
+				key: Key.modifier('return'),
 				label: 'Edit file',
 				action: () => {
 					logger.info('Entering edit mode');

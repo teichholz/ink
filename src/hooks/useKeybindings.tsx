@@ -1,16 +1,22 @@
 import chalk from 'chalk';
-import {Key, useFocus, useInput} from 'ink';
+import {Key as InkKey, useFocus, useInput} from 'ink';
 import {atom, useAtom} from 'jotai';
 import {useCallback, useEffect} from 'react';
 
-/**
- * Helper function to create a KeyCombo
- */
-export function createKeyCombo(
-	key: LetterKey,
-	modifiers: ModifierKey[] = [],
-): KeyCombo {
-	return {key, modifiers};
+export namespace Key {
+	/**
+	 * Helper function to create a KeyCombo
+	 */
+	export function create(
+		key: LetterKey,
+		modifiers: ModifierKey[] = [],
+	): KeyCombo {
+		return {key, modifiers};
+	}
+
+	export function modifier(mod: ModifierKey): KeyCombo {
+		return {key: '', modifiers: [mod]};
+	}
 }
 
 type ActiveKeybindings = {
@@ -21,7 +27,7 @@ type ActiveKeybindings = {
 export const globalKeybindings = atom<ActiveKeybindings>();
 export const currentFocusedKeybindings = atom<ActiveKeybindings>();
 
-type ModifierKey = keyof Key;
+type ModifierKey = keyof InkKey;
 
 type LetterKey =
 	| ''
@@ -204,7 +210,7 @@ export function useKeybindings(
 }
 
 function normalizeKeyBinding(keyBinding: KeyCombo): {
-	mainKey?: string | keyof Key;
+	mainKey?: string | keyof InkKey;
 	modifiers: ModifierKey[];
 } {
 	return {
