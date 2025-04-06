@@ -41,32 +41,50 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
 
-	const [cursorPosition, setCursorPosition] = useState<number>(0);
-	const [navigableNodes, setNavigableNodes] = useState<JsonNode[]>([]);
+	// Define a type for cursor position that includes path information
+	type CursorPosition = {
+		index: number;
+		path: string;
+	};
 
-	// Function to collect all navigable nodes from the JSON tree
-	const collectNavigableNodes = (node: JsonNode | null): JsonNode[] => {
+	const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
+		index: 0,
+		path: '',
+	});
+	const [navigableNodes, setNavigableNodes] = useState<
+		Array<{node: JsonNode; path: string}>
+	>([]);
+
+	// Function to collect all navigable nodes from the JSON tree with their paths
+	const collectNavigableNodes = (
+		node: JsonNode | null,
+		currentPath: string = '$',
+	): Array<{node: JsonNode; path: string}> => {
 		if (!node) return [];
 
-		const nodes: JsonNode[] = [node];
+		const nodes: Array<{node: JsonNode; path: string}> = [
+			{node, path: currentPath},
+		];
 
 		if (isObjectNode(node)) {
 			// Add all property keys (but not primitive values)
-			node.properties.forEach(prop => {
-				nodes.push(prop);
+			node.properties.forEach((prop, _index) => {
+				const propPath = `${currentPath}.${prop.key.value}`;
+				nodes.push({node: prop, path: propPath});
 
 				// For non-primitive values, add their children too
-				const valueNodes = !isPrimitiveValueNode(prop.value)
-					? collectNavigableNodes(prop.value)
-					: [];
-				if (valueNodes.length > 0) {
-					nodes.push(...valueNodes);
+				if (!isPrimitiveValueNode(prop.value)) {
+					const valueNodes = collectNavigableNodes(prop.value, propPath);
+					if (valueNodes.length > 0) {
+						nodes.push(...valueNodes);
+					}
 				}
 			});
 		} else if (isArrayNode(node)) {
 			// Add all array elements
-			node.elements.forEach(elem => {
-				nodes.push(...collectNavigableNodes(elem));
+			node.elements.forEach((elem, index) => {
+				const elemPath = `${currentPath}[${index}]`;
+				nodes.push(...collectNavigableNodes(elem, elemPath));
 			});
 		}
 
@@ -90,10 +108,15 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				label: 'Move cursor down',
 				action: () => {
 					if (navigableNodes.length > 0) {
-						setCursorPosition(prev =>
-							prev >= navigableNodes.length - 1 ? 0 : prev + 1,
-						);
-						logger.info('Moved cursor down');
+						setCursorPosition(prev => {
+							const newIndex =
+								prev.index >= navigableNodes.length - 1 ? 0 : prev.index + 1;
+							return {
+								index: newIndex,
+								path: navigableNodes[newIndex].path,
+							};
+						});
+						logger.info({cursorPosition}, 'Moved cursor down');
 					}
 				},
 				showInHelp: true,
@@ -103,10 +126,15 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				label: 'Move cursor up',
 				action: () => {
 					if (navigableNodes.length > 0) {
-						setCursorPosition(prev =>
-							prev <= 0 ? navigableNodes.length - 1 : prev - 1,
-						);
-						logger.info('Moved cursor up');
+						setCursorPosition(prev => {
+							const newIndex =
+								prev.index <= 0 ? navigableNodes.length - 1 : prev.index - 1;
+							return {
+								index: newIndex,
+								path: navigableNodes[newIndex].path,
+							};
+						});
+						logger.info({cursorPosition}, 'Moved cursor up');
 					}
 				},
 				showInHelp: true,
@@ -116,21 +144,22 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				label: 'Edit string',
 				action: () => {
 					logger.info({cursorPosition}, 'Editing string');
-					const node = navigableNodes[cursorPosition];
-					if (isStringNode(node)) {
-						setFocusedNode(node);
-					} else if (isPropertyNode(node)) {
-						setFocusedNode(node.value);
+					const currentNode = navigableNodes[cursorPosition.index].node;
+					if (isStringNode(currentNode)) {
+						setFocusedNode(currentNode);
+					} else if (isPropertyNode(currentNode)) {
+						setFocusedNode(currentNode.value);
 					} else {
 						logger.error('Unexpected node type for editing strings');
 					}
 				},
 				predicate: () => {
-					const node = navigableNodes[cursorPosition];
-					const isString = isStringNode(node);
+					if (navigableNodes.length === 0) return false;
+					const currentNode = navigableNodes[cursorPosition.index].node;
+					const isString = isStringNode(currentNode);
 					let isStringProperty = false;
-					if (isPropertyNode(node)) {
-						isStringProperty = node.value.type === 'String';
+					if (isPropertyNode(currentNode)) {
+						isStringProperty = currentNode.value.type === 'String';
 					}
 					return isString || isStringProperty;
 				},
@@ -146,7 +175,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[navigableNodes.length, cursorPosition],
+		[navigableNodes.length, cursorPosition.index, cursorPosition.path],
 	);
 
 	// Use keybindings hook
@@ -191,7 +220,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-			setCursorPosition(0);
+			setCursorPosition({index: 0, path: '$'});
 		};
 
 		loadFile();
@@ -236,14 +265,17 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		<Box flexDirection="column" padding={0}>
 			<Text>Editing: {path.basename(filePath)}</Text>
 			<Text>Use j/k to navigate, Esc to exit</Text>
+			{navigableNodes.length > 0 && (
+				<Text color="gray">Current path: {cursorPosition.path}</Text>
+			)}
 			<Box marginTop={1} flexDirection="column">
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
 						highlightedNode={
 							navigableNodes.length > 0 &&
-							cursorPosition < navigableNodes.length
-								? navigableNodes[cursorPosition]
+							cursorPosition.index < navigableNodes.length
+								? navigableNodes[cursorPosition.index].node
 								: null
 						}
 						focusedNode={focusedNode}
