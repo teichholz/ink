@@ -13,6 +13,16 @@ import {
 } from './parse-json.js';
 
 type SyntaxHighlighting = {
+	PROPERTY: (x: string) => ReactNode;
+	STRING: (x: string, node: JsonNode, onChange?: (value: string) => void) => ReactNode;
+	NUMBER: (x: string) => ReactNode;
+	BOOLEAN: (x: string) => ReactNode;
+	NULL: (x: string) => ReactNode;
+	ARRAY: (x: string) => ReactNode;
+	OBJECT: (x: string) => ReactNode;
+};
+
+const DefaultHighlighting: SyntaxHighlighting = {
 	PROPERTY: (x: string) => <Text color="blue">{x}</Text>,
 	STRING: (x: string, _node: JsonNode, onChange?: (value: string) => void) => {
 		// Extract the actual string value without quotes
