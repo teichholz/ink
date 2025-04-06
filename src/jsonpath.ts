@@ -53,10 +53,57 @@ function innerModifyJson(
 	update: ValueModification,
 	path: string[],
 ): JSONValue {
-	if (path === null) {
+	// Base case: if we've reached the end of the path, return the update
+	if (path.length === 1) {
 		return update;
 	}
 
-	const parsed = Number.parseInt(path[0]);
-	const ptr = parsed ? parsed : (path[0] as string);
+	// Skip the first element ($ or already processed part)
+	const currentPath = path[1];
+	const remainingPath = path.slice(1);
+
+	// Handle array indices (numeric paths)
+	const isArrayIndex = !isNaN(Number(currentPath));
+	
+	if (Array.isArray(json) && isArrayIndex) {
+		const index = Number(currentPath);
+		const result = [...json];
+		
+		if (remainingPath.length === 1) {
+			// We're at the target, update the value
+			result[index] = update;
+		} else {
+			// Continue traversing
+			result[index] = innerModifyJson(
+				result[index] as JSONValue,
+				update,
+				remainingPath
+			);
+		}
+		
+		return result;
+	} 
+	// Handle object properties
+	else if (typeof json === 'object' && json !== null && !Array.isArray(json)) {
+		const result = { ...json as JSONObject };
+		
+		if (remainingPath.length === 1) {
+			// We're at the target, update the value
+			result[currentPath] = update;
+		} else {
+			// Continue traversing
+			result[currentPath] = innerModifyJson(
+				result[currentPath] as JSONValue,
+				update,
+				remainingPath
+			);
+		}
+		
+		return result;
+	}
+	
+	// If we can't modify the path (e.g., trying to access a property of a primitive),
+	// return the original value
+	logger.warn(`Cannot modify path ${path.join('.')} in JSON`);
+	return json;
 }
