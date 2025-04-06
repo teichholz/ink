@@ -2,7 +2,7 @@ import {Box, Text} from 'ink';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
 import {useAtom} from 'jotai';
-import {addStringChangeAtom} from '../atoms/json-editor-atoms.js';
+import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
 	isArrayNode,
@@ -42,7 +42,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
-	const [, addStringChange] = useAtom(addStringChangeAtom);
+	const [, addStringChange] = useAtom(addJsonEditAtom);
 
 	// Define a type for cursor position that includes path information
 	type CursorPosition = {
