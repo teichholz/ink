@@ -31,7 +31,7 @@ export function getJsonPath(
 	});
 }
 
-export function modifyJson(
+export function modifyJsonPath(
 	json: JSONValue,
 	update: string,
 	jsonPath: string,
@@ -41,6 +41,9 @@ export function modifyJson(
 	return innerModifyJson(json, update, arr);
 }
 
+/**
+ * Shallow modify a JSON object at a given json path
+ */
 function innerModifyJson(
 	json: JSONValue,
 	update: string,
@@ -58,15 +61,19 @@ function innerModifyJson(
 		return Res.err(new Error("Invalid JSON: json must be an object"));
 	}
 
-	const parsed = Number.parseInt(path[0]);
-	const ptr = parsed ? parsed : path[0];
+	let restPath = path;
+	let obj = json as unknown as any;
+	while (restPath.length > 1) {
+		const parsed = Number.parseInt(restPath[0]);
+		const ptr = parsed ? parsed : restPath[0];
+		restPath = restPath.slice(1);
+		obj = obj[ptr];
 
-	if (path.length === 1) {
-		if (Array.isArray(json) && typeof ptr === "number") {
+		if (typeof obj !== "object") {
+			return Res.err(new Error(`Invalid JSON path: ${path.join(".")}`));
 		}
-
-		return Res.ok(update);
 	}
 
-	return Res.err(new Error(`Invalid JSON path: ${path.join(".")}`));
+	obj[restPath[0]] = update;
+	return Res.ok(json);
 }

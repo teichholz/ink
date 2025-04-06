@@ -48,20 +48,21 @@ export async function extractLabelsFromFile(
 
 		const json = JSON.parse(await readFile(file.path, "utf8"));
 
-		const root = getJsonPath(json, jsonPath, {
-			"%lang": file.language,
-		});
+		const root = getJsonPath(
+			json,
+			jsonPath,
+			new Map([["%lang", file.language]]),
+		);
 
 		logger.debug(`Extracted labels: ${JSON.stringify(root)}`);
 
-		if (root.length !== 1 || typeof root[0] !== "object") {
+		if (!root) {
 			return Res.err(
 				new Error("Invalid json path: Path must point to a single object"),
 			);
 		}
 
-		// json path returns an array of objects, must always point to a single object for us
-		const object = root[0] || {};
+		const object = root ?? {};
 
 		const m: Labels = new Labels(file);
 
