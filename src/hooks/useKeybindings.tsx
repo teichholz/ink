@@ -233,6 +233,8 @@ export function formatKeyBinding(keybinding: Keybinding): string {
 				return chalk.cyan('Shift');
 			case 'meta':
 				return chalk.cyan('Meta');
+			case 'escape':
+				return chalk.cyan('Esc');
 			default:
 				return chalk.cyan(mod);
 		}

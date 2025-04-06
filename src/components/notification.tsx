@@ -2,11 +2,13 @@ import chalk from 'chalk';
 import {Box, Text, useInput} from 'ink';
 import {useState} from 'react';
 import {useStdoutDimensions} from '../hooks/useStdoutDimensions.js';
+import {LiteralUnion} from 'type-fest';
 
 export type NotificationProps = {
 	title?: string;
 	message: string;
-	size?: number;
+	size?: LiteralUnion<'1/2' | '2/3' | '3/4', string>;
+	style?: 'info' | 'warning';
 	onDismiss?: () => void;
 };
 
@@ -15,12 +17,14 @@ export type NotificationProps = {
  * Can be dismissed with Enter or Escape
  */
 export function Notification({
-	title,
+	title = '',
 	message,
-	onDismiss,
-	size = 2,
+	onDismiss = () => {},
+	size = '1/2',
+	style = 'info',
 }: NotificationProps) {
 	const [cols, rows] = useStdoutDimensions();
+
 	useInput((_input, key) => {
 		if (key.return || key.escape) {
 			onDismiss?.();
@@ -28,8 +32,17 @@ export function Notification({
 	});
 
 	// Calculate notification dimensions
-	const notificationWidth = cols / size;
-	const notificationHeight = rows / size;
+	const [nom, denom] = size.toString().split('/');
+	let notificationWidth;
+	let notificationHeight;
+
+	if (!nom || !denom) {
+		notificationWidth = cols / 2;
+		notificationHeight = rows / 2;
+	} else {
+		notificationWidth = (cols * parseInt(nom)) / parseInt(denom);
+		notificationHeight = (rows * parseInt(nom)) / parseInt(denom);
+	}
 
 	// Calculate center position
 	const left = Math.floor((cols - notificationWidth) / 2);
@@ -42,7 +55,7 @@ export function Notification({
 			marginTop={top}
 			flexDirection="column"
 			borderStyle="round"
-			borderColor="yellow"
+			borderColor={style === 'warning' ? 'red' : 'green'}
 			padding={1}
 			width={notificationWidth}
 			height={notificationHeight}
