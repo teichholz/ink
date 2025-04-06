@@ -14,7 +14,14 @@
 		"complex": {
 			"help_topic_cmd": "Zeigt die Hilfe für ein Thema und seine Befehle an.",
 			"help_topic_cmd_param": "Zeigt die Hilfe für ein Thema, seine Befehle und seine Parameter an.",
-			"arr": [1,2,3,4]
+			"arr": [1,2,3,4],
+			"complex2": {
+				"complex3": {
+					"complex4": {
+						"arr": [1,2,3,4]
+					}
+				}
+			}
 		}
 	}
 }

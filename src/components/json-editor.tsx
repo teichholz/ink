@@ -44,6 +44,7 @@ type JsonEditorProps = {
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [content, setContent] = useState<TextBuffer>(TextBuffer.empty());
 	const [contentLength, setContentLength] = useState<number>(0);
+	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [highlightedContent, setHighlightedContent] = useState<ReactNode>('');
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -124,17 +125,18 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				action: () => {
 					logger.info('Editing string');
 					const node = navigableNodes[cursorPosition] as JsonPropertyNode;
-					const line = node.value.loc.start.line;
-					const scol = node.value.loc.start.column + 1;
-					const ecol = node.value.loc.end.column;
-					logger.info({line, scol, ecol}, 'Replacing region');
-					content.replace(
-						line,
-						scol + 1,
-						ecol - scol - 1,
-						'yoooo, i just inserted this text',
-					);
-					// Update length to trigger reparse
+					// const line = node.value.loc.start.line;
+					// const scol = node.value.loc.start.column + 1;
+					// const ecol = node.value.loc.end.column;
+					setFocusedNode(node.value);
+					// logger.info({line, scol, ecol}, 'Replacing region');
+					// content.replace(
+					// 	line,
+					// 	scol + 1,
+					// 	ecol - scol - 1,
+					// 	'yoooo, i just inserted this text',
+					// );
+					// // Update length to trigger reparse
 					setContentLength(content.length);
 				},
 				predicate: () => {
@@ -203,18 +205,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			logger.info('Set highlighted content due to file path change');
 
-			// Set the JSON tree first
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-
-			// Initialize the highlighted content immediately with no highlights yet
-			const initialHighlightedContent = syntaxHighlight(json as JsonValueNode, {
-				useReactComponents: true,
-				highlightNode: () => false,
-			});
-			setHighlightedContent(initialHighlightedContent);
-
-			// Reset cursor position
+			setHighlightedContent(syntaxHighlight(json as JsonValueNode));
 			setCursorPosition(0);
 		};
 
@@ -260,6 +253,23 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		setNavigableNodes(nodes);
 	}, [jsonTree]);
 
+	const onStringChange = (node: JsonNode, value: string) => {
+		logger.info({value}, 'Edited value');
+
+		if (isStringNode(node)) {
+			const line = node.loc.start.line;
+			const scol = node.loc.start.column + 1;
+			const ecol = node.loc.end.column;
+			logger.info({line, scol, ecol}, 'Replacing region');
+			content.replace(line, scol + 1, ecol - scol - 1, value);
+			// Update length to trigger reparse
+			setContentLength(content.length);
+			setFocusedNode(null);
+		} else {
+			logger.error('Unexpected node type for onStringChange');
+		}
+	};
+
 	// reparse and syntax highlight on change
 	useEffect(() => {
 		if (!jsonTree) {
@@ -278,8 +288,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		};
 
 		const highlightedContent = syntaxHighlight(jsonTree, {
-			useReactComponents: true,
 			highlightNode: highlightCurrentNode,
+			focusStringInput: focusedNode ? node => node === focusedNode : undefined,
+			onStringChange: onStringChange,
 		});
 
 		setHighlightedContent(highlightedContent);

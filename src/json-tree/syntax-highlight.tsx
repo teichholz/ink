@@ -1,6 +1,6 @@
 import {Text} from 'ink';
 import React, {ReactNode} from 'react';
-import TextInput from '../components/input.js';
+import TextInput, {TextInputProps} from '../components/input.js';
 import {
 	type JsonNode,
 	isArrayNode,
@@ -11,48 +11,62 @@ import {
 	isPropertyNode,
 	isStringNode,
 } from './parse-json.js';
+import {LiteralUnion} from 'type-fest';
+import {ForegroundColorName} from 'chalk';
 
-type SyntaxHighlighting = {
-	PROPERTY: (x: string) => ReactNode;
-	STRING: (x: string, node: JsonNode, onChange?: (value: string) => void) => ReactNode;
-	NUMBER: (x: string) => ReactNode;
-	BOOLEAN: (x: string) => ReactNode;
-	NULL: (x: string) => ReactNode;
-	ARRAY: (x: string) => ReactNode;
-	OBJECT: (x: string) => ReactNode;
-};
-
-const DefaultHighlighting: SyntaxHighlighting = {
-	PROPERTY: (x: string) => <Text color="blue">{x}</Text>,
-	STRING: (x: string, _node: JsonNode, onChange?: (value: string) => void) => {
-		// Extract the actual string value without quotes
-		const value = x.substring(1, x.length - 1);
-
-		if (onChange) {
-			return (
-				<TextInput
-					value={value}
-					onChange={newValue => onChange(newValue)}
-					focus={false}
-				/>
-			);
-		}
-		return <Text color="green">{x}</Text>;
-	},
-	NUMBER: (x: string) => <Text color="yellow">{x}</Text>,
-	BOOLEAN: (x: string) => <Text color="yellow">{x}</Text>,
-	NULL: (x: string) => <Text color="red">{x}</Text>,
+const DefaultHighlighting = {
 	ARRAY: (x: string) => <Text color="gray">{x}</Text>,
 	OBJECT: (x: string) => <Text color="gray">{x}</Text>,
+	STRING: (textInputProps: TextInputProps) => {
+		return (
+			<>
+				<Text>"</Text>
+				<TextInput {...textInputProps} />
+				<Text>"</Text>
+			</>
+		);
+	},
+	PROPERTY: ColoredHighlightableText('blue'),
+	NUMBER: ColoredHighlightableText('yellow'),
+	BOOLEAN: ColoredHighlightableText('yellow'),
+	NULL: ColoredHighlightableText('red'),
 };
+
+function ColoredHighlightableText(
+	color: LiteralUnion<ForegroundColorName, string>,
+) {
+	return (x: string, isHighlighted: boolean) => (
+		<Text backgroundColor={isHighlighted ? 'grey' : ''} color={color}>
+			{x}
+		</Text>
+	);
+}
 
 /**
  * Syntax highlighting options
  */
 export type SyntaxHighlightOptions = {
-	syntax?: SyntaxHighlighting;
+	syntax?: typeof DefaultHighlighting;
+
+	/**
+	 * Highlight node background when the curssor points to it
+	 */
 	highlightNode?: (node: JsonNode) => boolean;
+
+	/**
+	 * Whether to focus a string node for editing
+	 */
+	focusStringInput?: (node: JsonNode) => boolean;
+
+	/**
+	 * Callback when a string node has changed
+	 */
 	onStringChange?: (node: JsonNode, value: string) => void;
+
+	/**
+	 * Callback when a string node is submitted
+	 */
+	onStringSubmit?: (node: JsonNode, value: string) => void;
 };
 
 /**
@@ -64,13 +78,17 @@ export function syntaxHighlight(
 ): ReactNode {
 	const syntax = options.syntax ?? DefaultHighlighting;
 	const highlightNode = options.highlightNode ?? (() => false);
-	const onStringChange = options.onStringChange;
+	const focusStringInput = options.focusStringInput ?? (() => false);
+	const onStringChange = options.onStringChange ?? (() => {});
+	const onStringSubmit = options.onStringSubmit ?? (() => {});
 
 	return applyHighlighting(node, {
 		depth: 0,
 		syntax,
 		highlightNode,
+		focusStringInput,
 		onStringChange,
+		onStringSubmit,
 	});
 }
 
@@ -81,36 +99,40 @@ function applyHighlighting(
 	node: JsonNode,
 	options: {
 		depth: number;
-		syntax: SyntaxHighlighting;
-		highlightNode: (node: JsonNode) => boolean;
-		onStringChange?: (node: JsonNode, value: string) => void;
-	},
+	} & Required<SyntaxHighlightOptions>,
 ): ReactNode {
-	const {depth, syntax, highlightNode, onStringChange} = options;
+	const {
+		depth,
+		syntax,
+		highlightNode,
+		focusStringInput,
+		onStringChange,
+		onStringSubmit,
+	} = options;
 	const indent = '  '.repeat(depth);
 	const isHighlighted = highlightNode(node);
 
-	// Helper to apply highlighting if needed
-	const applyHighlight = (element: ReactNode) => {
-		// For React nodes, we'll handle highlighting in the component
-		return element;
+	const staticOpts = {
+		syntax,
+		highlightNode,
+		focusStringInput,
+		onStringChange,
+		onStringSubmit,
 	};
 
 	if (isObjectNode(node)) {
 		if (node.properties.length === 0) {
-			return applyHighlight(syntax.OBJECT('{}'));
+			return syntax.OBJECT('{}');
 		}
 
 		const childIndent = '  '.repeat(depth + 1);
 
 		// React version
 		const properties = node.properties.map(prop => {
-			const key = syntax.PROPERTY(prop.key.raw);
+			const key = syntax.PROPERTY(prop.key.raw, isHighlighted);
 			const value = applyHighlighting(prop.value, {
 				depth: depth + 1,
-				syntax,
-				highlightNode,
-				onStringChange,
+				...staticOpts,
 			});
 
 			// If the property node is highlighted, highlight just the key
@@ -160,18 +182,15 @@ function applyHighlighting(
 
 	if (isArrayNode(node)) {
 		if (node.elements.length === 0) {
-			return applyHighlight(syntax.ARRAY('[]'));
+			return syntax.ARRAY('[]');
 		}
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		// React version
 		const elements = node.elements.map(elem => {
 			const value = applyHighlighting(elem, {
 				depth: depth + 1,
-				syntax,
-				highlightNode,
-				onStringChange,
+				...staticOpts,
 			});
 
 			return (
@@ -210,12 +229,10 @@ function applyHighlighting(
 	}
 
 	if (isPropertyNode(node)) {
-		const key = syntax.PROPERTY(node.key.raw);
+		const key = syntax.PROPERTY(node.key.raw, isHighlighted);
 		const value = applyHighlighting(node.value, {
 			depth,
-			syntax,
-			highlightNode,
-			onStringChange,
+			...staticOpts,
 		});
 
 		// For property nodes, we highlight just the key in the parent's context
@@ -230,23 +247,28 @@ function applyHighlighting(
 
 	if (isStringNode(node)) {
 		// For React components, we pass the node and onChange handler
-		const handleChange = onStringChange
-			? (newValue: string) => onStringChange(node, newValue)
-			: undefined;
+		const handleChange = (newValue: string) => {
+			onStringChange(node, newValue);
+		};
 
-		return applyHighlight(syntax.STRING(node.raw, node, handleChange));
+		return syntax.STRING({
+			value: node.value,
+			backgroundColor: isHighlighted ? 'grey' : '',
+			onChange: handleChange,
+			focus: focusStringInput?.(node),
+		});
 	}
 
 	if (isNumberNode(node)) {
-		return applyHighlight(syntax.NUMBER(node.raw));
+		return syntax.NUMBER(node.raw, isHighlighted);
 	}
 
 	if (isBooleanNode(node)) {
-		return applyHighlight(syntax.BOOLEAN(node.raw));
+		return syntax.BOOLEAN(node.raw, isHighlighted);
 	}
 
 	if (isNullNode(node)) {
-		return applyHighlight(syntax.NULL(node.raw));
+		return syntax.NULL(node.raw, isHighlighted);
 	}
 
 	throw new Error(`Unsupported node type: ${node.type}`);

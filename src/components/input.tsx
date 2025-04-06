@@ -3,7 +3,7 @@ import {Text, useInput} from 'ink';
 import {useEffect, useState} from 'react';
 import type {Except} from 'type-fest';
 
-export type Props = {
+export type TextInputProps = {
 	/**
 	 * Text to display when `value` is empty.
 	 */
@@ -36,6 +36,11 @@ export type Props = {
 	readonly value: string;
 
 	/**
+	 * Background color of the input
+	 */
+	readonly backgroundColor?: string;
+
+	/**
 	 * Function to call when value updates.
 	 */
 	readonly onChange: (value: string) => void;
@@ -53,9 +58,10 @@ function TextInput({
 	mask,
 	highlightPastedText = false,
 	showCursor = true,
+	backgroundColor,
 	onChange,
 	onSubmit,
-}: Props) {
+}: TextInputProps) {
 	const [state, setState] = useState({
 		cursorOffset: (originalValue || '').length,
 		cursorWidth: 0,
@@ -202,7 +208,7 @@ function TextInput({
 	);
 
 	return (
-		<Text>
+		<Text backgroundColor={backgroundColor}>
 			{placeholder
 				? value.length > 0
 					? renderedValue
@@ -219,7 +225,7 @@ type UncontrolledProps = {
 	 * Initial value.
 	 */
 	readonly initialValue?: string;
-} & Except<Props, 'value' | 'onChange'>;
+} & Except<TextInputProps, 'value' | 'onChange'>;
 
 export function UncontrolledTextInput({
 	initialValue = '',
