@@ -252,7 +252,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						focusStringInput={
 							focusedNode ? node => node === focusedNode : undefined
 						}
-						onStringChange={(node: JsonNode, value: string) => {
+						onStringInputChange={(node: JsonNode, value: string) => {
 							logger.info({value}, 'Edited value');
 
 							if (isStringNode(node)) {
@@ -264,7 +264,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								logger.error('Unexpected node type for onStringChange');
 							}
 						}}
-						onStringSubmit={(_node: JsonNode) => {
+						onStringInputSubmit={(_node: JsonNode) => {
 							logger.info('Submitted string');
 							setFocusedNode(null);
 						}}

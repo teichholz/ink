@@ -70,12 +70,12 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Callback when a string node has changed
 	 */
-	onStringChange?: (node: JsonNode, value: string) => void;
+	onStringInputChange?: (node: JsonNode, value: string) => void;
 
 	/**
 	 * Callback when a string node is submitted
 	 */
-	onStringSubmit?: (node: JsonNode) => void;
+	onStringInputSubmit?: (node: JsonNode) => void;
 };
 
 /**
@@ -86,8 +86,8 @@ export function SyntaxHighlighter({
 	syntax = DefaultHighlighting,
 	highlightNode = () => false,
 	focusStringInput = () => false,
-	onStringChange = () => {},
-	onStringSubmit = () => {},
+	onStringInputChange = () => {},
+	onStringInputSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
 	useEffect(() => {
 		logger.info('SyntaxHighlighter rendered');
@@ -98,8 +98,8 @@ export function SyntaxHighlighter({
 		syntax,
 		highlightNode,
 		focusStringInput,
-		onStringChange,
-		onStringSubmit,
+		onStringInputChange,
+		onStringInputSubmit,
 	});
 }
 
@@ -115,8 +115,8 @@ function applyHighlighting(
 		syntax,
 		highlightNode,
 		focusStringInput,
-		onStringChange,
-		onStringSubmit,
+		onStringInputChange,
+		onStringInputSubmit,
 	} = props;
 
 	const indent = '  '.repeat(depth);
@@ -126,8 +126,8 @@ function applyHighlighting(
 		syntax,
 		highlightNode,
 		focusStringInput,
-		onStringChange,
-		onStringSubmit,
+		onStringInputChange,
+		onStringInputSubmit,
 	};
 
 	if (isObjectNode(node)) {
@@ -259,8 +259,8 @@ function applyHighlighting(
 		return syntax.STRING({
 			value: node.value,
 			backgroundColor: isHighlighted ? 'grey' : '',
-			onChange: string => onStringChange(node, string),
-			onSubmit: () => onStringSubmit(node),
+			onChange: string => onStringInputChange(node, string),
+			onSubmit: () => onStringInputSubmit(node),
 			focus: focusStringInput?.(node),
 		});
 	}
