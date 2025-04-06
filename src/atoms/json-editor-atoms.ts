@@ -5,6 +5,7 @@ export type JsonEdit = {
 	path: string;
 	value: string;
 	timestamp: number;
+	filePath: string;
 };
 
 // Create an atom to store the history of string changes
@@ -24,9 +25,11 @@ export const addJsonEditAtom = atom(
 		// Get current changes
 		const currentChanges = get(jsonEditAtom);
 
-		// Filter out any previous changes to the same path
+		// Filter out any previous changes to the same path in the same file
 		const filteredChanges = currentChanges.filter(
-			(existingChange) => existingChange.path !== newChange.path,
+			(existingChange) => 
+				!(existingChange.path === newChange.path && 
+				  existingChange.filePath === newChange.filePath)
 		);
 
 		// Add the new change

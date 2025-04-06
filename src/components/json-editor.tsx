@@ -313,9 +313,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								addStringChange({
 									path: nodePath,
 									value: node.value,
+									filePath: filePath,
 								});
 								logger.info(
-									{path: nodePath, value: node.value},
+									{path: nodePath, value: node.value, filePath},
 									'Saved string change',
 								);
 							}
