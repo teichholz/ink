@@ -15,14 +15,14 @@ import {
 	isPropertyNode,
 	isStringNode,
 	JsonNode,
-	JsonPropertyNode,
 	JsonValueNode,
 	parseJson,
 	parseJsonFile,
 } from '../json-tree/parse-json.js';
-import {stringify, syntaxHighlight} from '../json-tree/syntax-highlight.js';
+import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
 import {TextBuffer} from '../text-buffer.js';
+import {SyntaxHighlighter} from './syntax-highlighter.js';
 
 type JsonEditorProps = {
 	/**
@@ -123,21 +123,14 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: createKeyCombo('r'),
 				label: 'Edit string',
 				action: () => {
-					logger.info('Editing string');
-					const node = navigableNodes[cursorPosition] as JsonPropertyNode;
-					// const line = node.value.loc.start.line;
-					// const scol = node.value.loc.start.column + 1;
-					// const ecol = node.value.loc.end.column;
-					setFocusedNode(node.value);
-					// logger.info({line, scol, ecol}, 'Replacing region');
-					// content.replace(
-					// 	line,
-					// 	scol + 1,
-					// 	ecol - scol - 1,
-					// 	'yoooo, i just inserted this text',
-					// );
-					// // Update length to trigger reparse
-					setContentLength(content.length);
+					const node = navigableNodes[cursorPosition];
+					if (isStringNode(node)) {
+						setFocusedNode(node);
+					} else if (isPropertyNode(node)) {
+						setFocusedNode(node.value);
+					} else {
+						logger.error('Unexpected node type for editing strings');
+					}
 				},
 				predicate: () => {
 					const node = navigableNodes[cursorPosition];
@@ -207,7 +200,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-			setHighlightedContent(syntaxHighlight(json as JsonValueNode));
+			setHighlightedContent(<SyntaxHighlighter node={json as JsonValueNode} />);
 			setCursorPosition(0);
 		};
 
@@ -253,23 +246,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		setNavigableNodes(nodes);
 	}, [jsonTree]);
 
-	const onStringChange = (node: JsonNode, value: string) => {
-		logger.info({value}, 'Edited value');
-
-		if (isStringNode(node)) {
-			const line = node.loc.start.line;
-			const scol = node.loc.start.column + 1;
-			const ecol = node.loc.end.column;
-			logger.info({line, scol, ecol}, 'Replacing region');
-			content.replace(line, scol + 1, ecol - scol - 1, value);
-			// Update length to trigger reparse
-			setContentLength(content.length);
-			setFocusedNode(null);
-		} else {
-			logger.error('Unexpected node type for onStringChange');
-		}
-	};
-
 	// reparse and syntax highlight on change
 	useEffect(() => {
 		if (!jsonTree) {
@@ -287,14 +263,39 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			return node === navigableNodes[cursorPosition];
 		};
 
-		const highlightedContent = syntaxHighlight(jsonTree, {
-			highlightNode: highlightCurrentNode,
-			focusStringInput: focusedNode ? node => node === focusedNode : undefined,
-			onStringChange: onStringChange,
-		});
+		const onStringChange = (node: JsonNode, value: string) => {
+			logger.info({value}, 'Edited value');
 
-		setHighlightedContent(highlightedContent);
-	}, [jsonTree, cursorPosition, navigableNodes]);
+			if (isStringNode(node)) {
+				const line = node.loc.start.line;
+				const scol = node.loc.start.column + 1;
+				const ecol = node.loc.end.column;
+				logger.info({line, scol, ecol}, 'Replacing region');
+				content.replace(line, scol + 1, ecol - scol - 1, value);
+				// Update length to trigger reparse
+				setContentLength(content.length);
+			} else {
+				logger.error('Unexpected node type for onStringChange');
+			}
+		};
+
+		const onStringSubmit = (_node: JsonNode, _value: string) => {
+			logger.info('Submitting string');
+			setFocusedNode(null);
+		};
+
+		setHighlightedContent(
+			<SyntaxHighlighter
+				node={jsonTree}
+				highlightNode={highlightCurrentNode}
+				focusStringInput={
+					focusedNode ? node => node === focusedNode : undefined
+				}
+				onStringChange={onStringChange}
+				onStringSubmit={onStringSubmit}
+			/>,
+		);
+	}, [jsonTree, cursorPosition, navigableNodes, focusedNode]);
 
 	if (error) {
 		return (

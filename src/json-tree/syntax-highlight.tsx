@@ -1,4 +1,3 @@
-import {ReactNode} from 'react';
 import {
 	type JsonNode,
 	isArrayNode,
@@ -9,11 +8,6 @@ import {
 	isPropertyNode,
 	isStringNode,
 } from './parse-json.js';
-import {syntaxHighlight} from '../components/syntax-highlighter.js';
-
-// Re-export the syntaxHighlight function from the component
-export {syntaxHighlight};
-export type {SyntaxHighlightOptions} from '../components/syntax-highlighter.js';
 
 export type StringifyOptions = {
 	depth?: number;

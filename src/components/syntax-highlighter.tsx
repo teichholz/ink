@@ -1,6 +1,7 @@
+import {ForegroundColorName} from 'chalk';
 import {Text} from 'ink';
 import React, {ReactNode} from 'react';
-import TextInput, {TextInputProps} from './input.js';
+import {LiteralUnion} from 'type-fest';
 import {
 	type JsonNode,
 	isArrayNode,
@@ -11,8 +12,7 @@ import {
 	isPropertyNode,
 	isStringNode,
 } from '../json-tree/parse-json.js';
-import {LiteralUnion} from 'type-fest';
-import {ForegroundColorName} from 'chalk';
+import TextInput, {TextInputProps} from './input.js';
 
 const DefaultHighlighting = {
 	ARRAY: (x: string) => <Text color="gray">{x}</Text>,
@@ -46,6 +46,14 @@ function ColoredHighlightableText(
  * Syntax highlighting options
  */
 export type SyntaxHighlightOptions = {
+	/**
+	 * JSON node to highlight
+	 */
+	node: JsonNode;
+
+	/**
+	 * Syntax highlighting options
+	 */
 	syntax?: typeof DefaultHighlighting;
 
 	/**
@@ -70,20 +78,18 @@ export type SyntaxHighlightOptions = {
 };
 
 /**
- * Applies syntax highlighting to a JSON node
+ * SyntaxHighlighter component for JSON nodes
  */
-export function syntaxHighlight(
-	node: JsonNode,
-	options: SyntaxHighlightOptions = {},
-): ReactNode {
-	const syntax = options.syntax ?? DefaultHighlighting;
-	const highlightNode = options.highlightNode ?? (() => false);
-	const focusStringInput = options.focusStringInput ?? (() => false);
-	const onStringChange = options.onStringChange ?? (() => {});
-	const onStringSubmit = options.onStringSubmit ?? (() => {});
-
-	return applyHighlighting(node, {
-		depth: 0,
+export function SyntaxHighlighter({
+	node,
+	syntax = DefaultHighlighting,
+	highlightNode = () => false,
+	focusStringInput = () => false,
+	onStringChange = () => {},
+	onStringSubmit = () => {},
+}: SyntaxHighlightOptions): ReactNode {
+	return applyHighlighting(0, {
+		node,
 		syntax,
 		highlightNode,
 		focusStringInput,
@@ -96,19 +102,18 @@ export function syntaxHighlight(
  * Internal function that applies highlighting to a node
  */
 function applyHighlighting(
-	node: JsonNode,
-	options: {
-		depth: number;
-	} & Required<SyntaxHighlightOptions>,
+	depth: number,
+	props: Required<SyntaxHighlightOptions>,
 ): ReactNode {
 	const {
-		depth,
+		node,
 		syntax,
 		highlightNode,
 		focusStringInput,
 		onStringChange,
 		onStringSubmit,
-	} = options;
+	} = props;
+
 	const indent = '  '.repeat(depth);
 	const isHighlighted = highlightNode(node);
 
@@ -130,8 +135,8 @@ function applyHighlighting(
 		// React version
 		const properties = node.properties.map(prop => {
 			const key = syntax.PROPERTY(prop.key.raw, isHighlighted);
-			const value = applyHighlighting(prop.value, {
-				depth: depth + 1,
+			const value = applyHighlighting(depth + 1, {
+				node: prop.value,
 				...staticOpts,
 			});
 
@@ -188,8 +193,8 @@ function applyHighlighting(
 		const childIndent = '  '.repeat(depth + 1);
 
 		const elements = node.elements.map(elem => {
-			const value = applyHighlighting(elem, {
-				depth: depth + 1,
+			const value = applyHighlighting(depth + 1, {
+				node: elem,
 				...staticOpts,
 			});
 
@@ -230,8 +235,8 @@ function applyHighlighting(
 
 	if (isPropertyNode(node)) {
 		const key = syntax.PROPERTY(node.key.raw, isHighlighted);
-		const value = applyHighlighting(node.value, {
-			depth,
+		const value = applyHighlighting(depth + 1, {
+			node: node.value,
 			...staticOpts,
 		});
 
@@ -246,15 +251,11 @@ function applyHighlighting(
 	}
 
 	if (isStringNode(node)) {
-		// For React components, we pass the node and onChange handler
-		const handleChange = (newValue: string) => {
-			onStringChange(node, newValue);
-		};
-
 		return syntax.STRING({
 			value: node.value,
 			backgroundColor: isHighlighted ? 'grey' : '',
-			onChange: handleChange,
+			onChange: string => onStringChange(node, string),
+			onSubmit: string => onStringSubmit(node, string),
 			focus: focusStringInput?.(node),
 		});
 	}
