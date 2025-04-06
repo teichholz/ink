@@ -36,9 +36,14 @@ export function modifyJsonPath(
 	update: string,
 	jsonPath: string,
 ): Result<JSONValue, Error> {
-	const arr = jsonPath.split(".");
+	if (!jsonPath) {
+		return Res.err(new Error("Invalid JSON path: must not be empty"));
+	}
 
-	return innerModifyJson(json, update, arr);
+	// Split the path, handling array notation correctly
+	const pathParts = jsonPath.replace(/\[(\d+)\]/g, ".$1").split(".");
+	
+	return innerModifyJson(json, update, pathParts);
 }
 
 /**
