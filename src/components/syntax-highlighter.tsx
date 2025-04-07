@@ -142,10 +142,14 @@ function applyHighlighting(
 
 	const indent = '  '.repeat(depth);
 	const isHighlighted = () => ctr.count === cursor;
-
-	if (isHighlighted()) {
-		logger.info('Cursor is highlighted');
-		onCursorChange({index: cursor, path: path, node: node});
+	
+	// Only update cursor information once per render cycle
+	// and only at the top level to avoid recursion
+	if (isHighlighted() && depth === 0) {
+		// Use setTimeout to break the synchronous call stack
+		setTimeout(() => {
+			onCursorChange({index: cursor, path: path, node: node});
+		}, 0);
 	}
 
 	const staticOpts = {
