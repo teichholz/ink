@@ -53,6 +53,11 @@ export type SyntaxHighlightOptions = {
 	node: JsonNode;
 
 	/**
+	 * Current JSON path for the node
+	 */
+	path?: string;
+
+	/**
 	 * Syntax highlighting options
 	 */
 	syntax?: typeof DefaultHighlighting;
@@ -70,12 +75,12 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Callback when a string node has changed
 	 */
-	onStringInputChange?: (node: JsonNode, value: string) => void;
+	onStringInputChange?: (node: JsonNode, value: string, path: string) => void;
 
 	/**
 	 * Callback when a string node is submitted
 	 */
-	onStringInputSubmit?: (node: JsonNode) => void;
+	onStringInputSubmit?: (node: JsonNode, path: string) => void;
 };
 
 /**
@@ -83,6 +88,7 @@ export type SyntaxHighlightOptions = {
  */
 export function SyntaxHighlighter({
 	node,
+	path = '/',
 	syntax = DefaultHighlighting,
 	highlightedNode = null,
 	focusedNode = null,
@@ -95,6 +101,7 @@ export function SyntaxHighlighter({
 
 	return applyHighlighting(0, {
 		node,
+		path,
 		syntax,
 		highlightedNode,
 		focusedNode,
@@ -112,6 +119,7 @@ function applyHighlighting(
 ): ReactNode {
 	const {
 		node,
+		path,
 		syntax,
 		highlightedNode,
 		focusedNode,
@@ -140,8 +148,10 @@ function applyHighlighting(
 		// React version
 		const properties = node.properties.map(prop => {
 			const key = syntax.PROPERTY(prop.key.raw, isHighlighted);
+			const propPath = `${path}/${prop.key.value}`;
 			const value = applyHighlighting(depth + 1, {
 				node: prop.value,
+				path: propPath,
 				...staticOpts,
 			});
 
@@ -197,9 +207,11 @@ function applyHighlighting(
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		const elements = node.elements.map(elem => {
+		const elements = node.elements.map((elem, index) => {
+			const elemPath = `${path}/${index}`;
 			const value = applyHighlighting(depth + 1, {
 				node: elem,
+				path: elemPath,
 				...staticOpts,
 			});
 
@@ -260,8 +272,8 @@ function applyHighlighting(
 			value: node.value,
 			backgroundColor: isHighlighted ? 'grey' : '',
 			focus: node === focusedNode,
-			onChange: string => onStringInputChange(node, string),
-			onSubmit: () => onStringInputSubmit(node),
+			onChange: string => onStringInputChange(node, string, path),
+			onSubmit: () => onStringInputSubmit(node, path),
 			// key: `string-${node.range[0]}-${node.range[1]}-${node.value}`,
 		});
 	}

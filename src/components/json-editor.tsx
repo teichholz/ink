@@ -288,8 +288,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								: null
 						}
 						focusedNode={focusedNode}
-						onStringInputChange={(node: JsonNode, value: string) => {
-							logger.info({value}, 'Edited value');
+						onStringInputChange={(node: JsonNode, value: string, path: string) => {
+							logger.info({value, path}, 'Edited value');
 
 							if (isStringNode(node)) {
 								// Create a new copy of the JSON tree to trigger re-render
@@ -300,39 +300,22 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								logger.error('Unexpected node type for onStringChange');
 							}
 						}}
-						onStringInputSubmit={(node: JsonNode) => {
-							logger.info('Submitted string');
-
-							const nodeEntry = navigableNodes.find(entry => {
-								if (isPropertyNode(entry.node)) {
-									return entry.node.value === node;
-								} else if (isStringNode(entry.node)) {
-									return entry.node === node;
-								}
-
-								return false;
-							});
-
-							const nodePath = nodeEntry?.path ?? 'unknown';
-
-							if (nodePath === 'unknown') {
-								logger.error({nodeEntry}, 'Unexpected node path');
-								return;
-							}
+						onStringInputSubmit={(node: JsonNode, path: string) => {
+							logger.info({path}, 'Submitted string');
 
 							if (isStringNode(node)) {
 								const originalValue = getJsonPointer(
 									originalJson,
-									nodePath,
+									path,
 								) as string;
 								addStringChange({
-									path: nodePath,
+									path: path,
 									value: node.value,
 									originalValue: originalValue,
 									filePath: filePath,
 								});
 								logger.info(
-									{path: nodePath, value: node.value, filePath},
+									{path, value: node.value, filePath},
 									'Saved string change',
 								);
 							}
