@@ -99,42 +99,34 @@ export function SyntaxHighlighter({
 	onStringInputChange = () => {},
 	onStringInputSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
-	useEffect(() => {
-		logger.info('SyntaxHighlighter rendered');
-	}, [node]);
+	const cursorInfoRef = React.useRef<Map<number, JsonCursor>>(new Map());
 
-	const prevCursorRef = React.useRef<{
-		index: number;
-		path: string;
-		node: JsonNode | null;
-	}>({
-		index: 0,
-		path: '/',
-		node: null,
-	});
-
-	const ctr = {count: 0};
 	const count = countHighlightableNodes(node);
 	const modCursor = cursor % count;
-	const result = applyHighlighting(0, ctr, {
-		node,
-		syntax,
-		cursor: modCursor <= 0 ? count - modCursor : modCursor,
-		onCursorChange: newCursor => {
-			const prevCursor = prevCursorRef.current;
-			if (
-				newCursor.index !== prevCursor.index ||
-				newCursor.path !== prevCursor.path ||
-				newCursor.node !== prevCursor.node
-			) {
-				prevCursorRef.current = newCursor;
-				onCursorChange(newCursor);
-			}
+	const normalizedCursor = modCursor <= 0 ? count - modCursor : modCursor;
+
+	const result = applyHighlighting(
+		0,
+		{count: 0},
+		{
+			node,
+			syntax,
+			cursor: normalizedCursor,
+			onCursorChange: newCursor => {
+				cursorInfoRef.current.set(newCursor.index, newCursor);
+			},
+			focusedNode,
+			onStringInputChange,
+			onStringInputSubmit,
 		},
-		focusedNode,
-		onStringInputChange,
-		onStringInputSubmit,
-	});
+	);
+
+	useEffect(() => {
+		const cursorInfo = cursorInfoRef.current.get(normalizedCursor);
+		if (cursorInfo) {
+			onCursorChange(cursorInfo);
+		}
+	}, [normalizedCursor, onCursorChange]);
 
 	return result;
 }
