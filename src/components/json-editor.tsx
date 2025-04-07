@@ -102,7 +102,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('j'),
 				label: 'Move cursor down',
 				action: () => {
-					setCursor(prev => ({...prev, index: prev.index + 1}));
+					logger.info('Moving cursor down');
+					setCursor(prev => {
+						return {...prev, index: prev.index + 1};
+					});
 				},
 				showInHelp: true,
 			},
@@ -110,7 +113,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('k'),
 				label: 'Move cursor up',
 				action: () => {
-					setCursor(prev => ({...prev, index: prev.index - 1}));
+					logger.info('Moving cursor up');
+					setCursor(prev => {
+						return {...prev, index: prev.index - 1};
+					});
 				},
 				showInHelp: true,
 			},
@@ -159,7 +165,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[cursor],
+		[cursor.node],
 	);
 
 	// Use keybindings hook
@@ -201,25 +207,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						node={jsonTree}
 						cursor={cursor.index}
 						focusedNode={focusedNode}
-						onCursorChange={(change: JsonCursor) => {
-							setCursor(change);
-						}}
-						onStringInputChange={(
-							node: JsonNode,
-							value: string,
-							path: string,
-						) => {
-							logger.info({value, path}, 'Edited value');
-
-							if (isStringNode(node)) {
-								// Create a new copy of the JSON tree to trigger re-render
-								const updatedTree = {...jsonTree};
-								node.value = value;
-								setJsonTree(updatedTree);
-							} else {
-								logger.error('Unexpected node type for onStringChange');
-							}
-						}}
+						onCursorChange={setCursor}
 						onStringInputSubmit={(node: JsonNode, path: string) => {
 							logger.info({path}, 'Submitted string');
 

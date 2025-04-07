@@ -222,7 +222,7 @@ function TextInput({
 
 export default TextInput;
 
-type UncontrolledProps = {
+export type UncontrolledTextInputProps = {
 	/**
 	 * Initial value.
 	 */
@@ -232,7 +232,7 @@ type UncontrolledProps = {
 export function UncontrolledTextInput({
 	initialValue = '',
 	...props
-}: UncontrolledProps) {
+}: UncontrolledTextInputProps) {
 	const [value, setValue] = useState(initialValue);
 
 	return <TextInput {...props} value={value} onChange={setValue} />;

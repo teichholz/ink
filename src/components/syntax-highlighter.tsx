@@ -13,16 +13,16 @@ import {
 	isStringNode,
 } from '../json-tree/parse-json.js';
 import {logger} from '../logger.js';
-import TextInput, {TextInputProps} from './input.js';
+import {UncontrolledTextInput, UncontrolledTextInputProps} from './input.js';
 
 const DefaultHighlighting = {
 	ARRAY: (x: string) => <Text color="gray">{x}</Text>,
 	OBJECT: (x: string) => <Text color="gray">{x}</Text>,
-	STRING: (textInputProps: TextInputProps) => {
+	STRING: (textInputProps: UncontrolledTextInputProps) => {
 		return (
 			<>
 				<Text>"</Text>
-				<TextInput {...textInputProps} />
+				<UncontrolledTextInput {...textInputProps} />
 				<Text>"</Text>
 			</>
 		);
@@ -81,6 +81,8 @@ export type SyntaxHighlightOptions = {
 
 	/**
 	 * Callback when a string node has changed
+	 *
+	 * @deprecated Use onStringInputSubmit instead
 	 */
 	onStringInputChange?: (node: JsonNode, value: string, path: string) => void;
 
@@ -107,18 +109,42 @@ export function SyntaxHighlighter({
 		logger.info('SyntaxHighlighter rendered');
 	}, [node]);
 
+	// Use a ref to track the previous cursor position and node
+	const prevCursorRef = React.useRef<{
+		index: number;
+		path: string;
+		node: JsonNode | null;
+	}>({
+		index: 0,
+		path: '/',
+		node: null,
+	});
+
 	const ctr = {count: 0};
 
-	return applyHighlighting(0, ctr, {
+	const result = applyHighlighting(0, ctr, {
 		node,
 		path,
 		syntax,
 		cursor,
-		onCursorChange,
+		onCursorChange: newCursor => {
+			// Only call onCursorChange if something actually changed
+			const prevCursor = prevCursorRef.current;
+			if (
+				newCursor.index !== prevCursor.index ||
+				newCursor.path !== prevCursor.path ||
+				newCursor.node !== prevCursor.node
+			) {
+				prevCursorRef.current = newCursor;
+				onCursorChange(newCursor);
+			}
+		},
 		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
 	});
+
+	return result;
 }
 
 /**
@@ -142,14 +168,9 @@ function applyHighlighting(
 
 	const indent = '  '.repeat(depth);
 	const isHighlighted = () => ctr.count === cursor;
-	
-	// Only update cursor information once per render cycle
-	// and only at the top level to avoid recursion
-	if (isHighlighted() && depth === 0) {
-		// Use setTimeout to break the synchronous call stack
-		setTimeout(() => {
-			onCursorChange({index: cursor, path: path, node: node});
-		}, 0);
+
+	if (isHighlighted()) {
+		onCursorChange({index: cursor, path: path, node: node});
 	}
 
 	const staticOpts = {
@@ -272,7 +293,6 @@ function applyHighlighting(
 		);
 	}
 
-	ctr.count++;
 	if (isPropertyNode(node)) {
 		const key = syntax.PROPERTY(node.key.raw, isHighlighted());
 		const value = applyHighlighting(depth + 1, ctr, {
@@ -293,10 +313,9 @@ function applyHighlighting(
 
 	if (isStringNode(node)) {
 		return syntax.STRING({
-			value: node.value,
+			initialValue: node.value,
 			backgroundColor: isHighlighted() ? 'grey' : '',
 			focus: node === focusedNode,
-			onChange: string => onStringInputChange(node, string, path),
 			onSubmit: () => onStringInputSubmit(node, path),
 		});
 	}
