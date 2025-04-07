@@ -121,7 +121,6 @@ export function SyntaxHighlighter({
 		syntax,
 		cursor: modCursor <= 0 ? count - modCursor : modCursor,
 		onCursorChange: newCursor => {
-			// Only call onCursorChange if something actually changed
 			const prevCursor = prevCursorRef.current;
 			if (
 				newCursor.index !== prevCursor.index ||
