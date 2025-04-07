@@ -18,10 +18,10 @@ export type StringifyOptions = {
  */
 export function stringify(
 	node: JsonNode,
-	options: StringifyOptions = {},
+	{depth = 0}: StringifyOptions = {},
+	ind = 2,
 ): string {
-	const {depth = 0} = options;
-	const indent = '  '.repeat(depth);
+	const indent = ' '.repeat(ind).repeat(depth);
 
 	if (isObjectNode(node)) {
 		if (node.properties.length === 0) {

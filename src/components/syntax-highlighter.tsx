@@ -2,6 +2,7 @@ import {ForegroundColorName} from 'chalk';
 import {Text} from 'ink';
 import React, {ReactNode, useEffect} from 'react';
 import {LiteralUnion} from 'type-fest';
+import {countHighlightableNodes, isPrimitive} from '../json-tree/json-util.js';
 import {
 	type JsonNode,
 	isArrayNode,
@@ -9,7 +10,6 @@ import {
 	isNullNode,
 	isNumberNode,
 	isObjectNode,
-	isPropertyNode,
 	isStringNode,
 } from '../json-tree/parse-json.js';
 import {logger} from '../logger.js';
@@ -58,11 +58,6 @@ export type SyntaxHighlightOptions = {
 	node: JsonNode;
 
 	/**
-	 * Current JSON path for the node
-	 */
-	path?: string;
-
-	/**
 	 * Syntax highlighting options
 	 */
 	syntax?: typeof DefaultHighlighting;
@@ -97,7 +92,6 @@ export type SyntaxHighlightOptions = {
  */
 export function SyntaxHighlighter({
 	node,
-	path = '/',
 	syntax = DefaultHighlighting,
 	cursor = 0,
 	onCursorChange = () => {},
@@ -109,7 +103,6 @@ export function SyntaxHighlighter({
 		logger.info('SyntaxHighlighter rendered');
 	}, [node]);
 
-	// Use a ref to track the previous cursor position and node
 	const prevCursorRef = React.useRef<{
 		index: number;
 		path: string;
@@ -121,12 +114,12 @@ export function SyntaxHighlighter({
 	});
 
 	const ctr = {count: 0};
-
+	const count = countHighlightableNodes(node);
+	const modCursor = cursor % count;
 	const result = applyHighlighting(0, ctr, {
 		node,
-		path,
 		syntax,
-		cursor,
+		cursor: modCursor <= 0 ? count - modCursor : modCursor,
 		onCursorChange: newCursor => {
 			// Only call onCursorChange if something actually changed
 			const prevCursor = prevCursorRef.current;
@@ -147,32 +140,30 @@ export function SyntaxHighlighter({
 	return result;
 }
 
-/**
- * Internal function that applies highlighting to a node
- */
 function applyHighlighting(
 	depth: number,
 	ctr: {count: number},
-	props: Required<SyntaxHighlightOptions>,
-): ReactNode {
-	const {
+	{
 		node,
-		path,
+		path = '',
 		syntax,
 		cursor,
 		onCursorChange,
 		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
-	} = props;
-
+		canHighlight = true,
+	}: Required<SyntaxHighlightOptions> & {path?: string; canHighlight?: boolean},
+): ReactNode {
 	const indent = '  '.repeat(depth);
-	const isHighlighted = () => ctr.count === cursor;
 
-	if (isHighlighted()) {
+	const isHighlighted = () => canHighlight && ctr.count === cursor;
+
+	if (ctr.count === cursor) {
 		onCursorChange({index: cursor, path: path, node: node});
 	}
 
+	// options that are static for the entire tree
 	const staticOpts = {
 		syntax,
 		onCursorChange,
@@ -196,6 +187,7 @@ function applyHighlighting(
 			const value = applyHighlighting(depth + 1, ctr, {
 				node: prop.value,
 				path: propPath,
+				canHighlight: !isPrimitive(prop.value),
 				...staticOpts,
 			});
 
@@ -289,24 +281,6 @@ function applyHighlighting(
 				) : (
 					closeBracket
 				)}
-			</React.Fragment>
-		);
-	}
-
-	if (isPropertyNode(node)) {
-		const key = syntax.PROPERTY(node.key.raw, isHighlighted());
-		const value = applyHighlighting(depth + 1, ctr, {
-			node: node.value,
-			path: `path/${node.key.value}`,
-			...staticOpts,
-		});
-
-		// For property nodes, we highlight just the key in the parent's context
-		return (
-			<React.Fragment>
-				{key}
-				<Text>: </Text>
-				{value}
 			</React.Fragment>
 		);
 	}
