@@ -5,11 +5,6 @@ import {useAtom} from 'jotai';
 import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
-	isArrayNode,
-	isBooleanNode,
-	isNullNode,
-	isNumberNode,
-	isObjectNode,
 	isPropertyNode,
 	isStringNode,
 	JsonNode,
@@ -19,7 +14,7 @@ import {
 } from '../json-tree/parse-json.js';
 import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
-import {SyntaxHighlighter} from './syntax-highlighter.js';
+import {JsonCursor, SyntaxHighlighter} from './syntax-highlighter.js';
 import {getJsonPointer, JSONValue} from '../jsonpath.js';
 
 type JsonEditorProps = {
@@ -46,145 +41,11 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [error, setError] = useState<Error | null>(null);
 	const [, addStringChange] = useAtom(addJsonEditAtom);
 
-	// Define a type for cursor position that includes path information
-	type CursorPosition = {
-		index: number;
-		path: string;
-	};
-
-	const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
+	const [cursor, setCursor] = useState<JsonCursor>({
 		index: 0,
 		path: '/',
+		node: null,
 	});
-	const [navigableNodes, setNavigableNodes] = useState<
-		Array<{node: JsonNode; path: string}>
-	>([]);
-
-	// Function to collect all navigable nodes from the JSON tree with their paths
-	const collectNavigableNodes = (
-		node: JsonNode | null,
-		currentPath: string = '/',
-	): Array<{node: JsonNode; path: string}> => {
-		if (!node) return [];
-
-		const nodes: Array<{node: JsonNode; path: string}> = [
-			{node, path: currentPath},
-		];
-
-		if (isObjectNode(node)) {
-			// Add all property keys (but not primitive values)
-			node.properties.forEach((prop, _index) => {
-				const propPath = `${currentPath}/${prop.key.value}`;
-				nodes.push({node: prop, path: propPath});
-
-				// For non-primitive values, add their children too
-				if (!isPrimitiveValueNode(prop.value)) {
-					const valueNodes = collectNavigableNodes(prop.value, propPath);
-					if (valueNodes.length > 0) {
-						nodes.push(...valueNodes);
-					}
-				}
-			});
-		} else if (isArrayNode(node)) {
-			// Add all array elements
-			node.elements.forEach((elem, index) => {
-				const elemPath = `${currentPath}/${index}`;
-				nodes.push(...collectNavigableNodes(elem, elemPath));
-			});
-		}
-
-		return nodes;
-	};
-
-	const isPrimitiveValueNode = (node: JsonNode): boolean => {
-		return (
-			isStringNode(node) ||
-			isNumberNode(node) ||
-			isBooleanNode(node) ||
-			isNullNode(node)
-		);
-	};
-
-	// Define keybindings
-	const keybindings = useMemo<Keybinding[]>(
-		() => [
-			{
-				key: Key.create('j'),
-				label: 'Move cursor down',
-				action: () => {
-					if (navigableNodes.length > 0) {
-						setCursorPosition(prev => {
-							const newIndex =
-								prev.index >= navigableNodes.length - 1 ? 0 : prev.index + 1;
-							return {
-								index: newIndex,
-								path: navigableNodes[newIndex].path,
-							};
-						});
-						logger.info({cursorPosition}, 'Moved cursor down');
-					}
-				},
-				showInHelp: true,
-			},
-			{
-				key: Key.create('k'),
-				label: 'Move cursor up',
-				action: () => {
-					if (navigableNodes.length > 0) {
-						setCursorPosition(prev => {
-							const newIndex =
-								prev.index <= 0 ? navigableNodes.length - 1 : prev.index - 1;
-							return {
-								index: newIndex,
-								path: navigableNodes[newIndex].path,
-							};
-						});
-						logger.info({cursorPosition}, 'Moved cursor up');
-					}
-				},
-				showInHelp: true,
-			},
-			{
-				key: Key.create('r'),
-				label: 'Edit string',
-				action: () => {
-					logger.info({cursorPosition}, 'Editing string');
-					const currentNode = navigableNodes[cursorPosition.index].node;
-					if (isStringNode(currentNode)) {
-						setFocusedNode(currentNode);
-					} else if (isPropertyNode(currentNode)) {
-						setFocusedNode(currentNode.value);
-					} else {
-						logger.error('Unexpected node type for editing strings');
-					}
-				},
-				predicate: () => {
-					if (navigableNodes.length === 0) return false;
-					const currentNode = navigableNodes[cursorPosition.index].node;
-					const isString = isStringNode(currentNode);
-					let isStringProperty = false;
-					if (isPropertyNode(currentNode)) {
-						isStringProperty = currentNode.value.type === 'String';
-					}
-					return isString || isStringProperty;
-				},
-				showInHelp: true,
-			},
-			{
-				key: Key.modifier('escape'),
-				label: 'Leave json editor',
-				action: () => {
-					logger.info('Leaving json editor');
-					onExit?.();
-				},
-				showInHelp: true,
-			},
-		],
-		[navigableNodes.length, cursorPosition.index, cursorPosition.path],
-	);
-
-	// Use keybindings hook
-	useKeybindings(keybindings, id);
 
 	useEffect(() => {
 		const loadFile = async () => {
@@ -229,21 +90,80 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			setJsonTree(json as JsonValueNode);
 			setError(null);
-			setCursorPosition({index: 0, path: '/'});
+			setCursor({index: 0, path: '/', node: null});
 		};
 
 		loadFile();
 	}, [filePath]);
 
-	// Update navigable nodes when JSON tree changes
-	useEffect(() => {
-		if (!jsonTree) {
-			return;
-		}
+	const keybindings = useMemo<Keybinding[]>(
+		() => [
+			{
+				key: Key.create('j'),
+				label: 'Move cursor down',
+				action: () => {
+					setCursor(prev => ({...prev, index: prev.index + 1}));
+				},
+				showInHelp: true,
+			},
+			{
+				key: Key.create('k'),
+				label: 'Move cursor up',
+				action: () => {
+					setCursor(prev => ({...prev, index: prev.index - 1}));
+				},
+				showInHelp: true,
+			},
+			{
+				key: Key.create('r'),
+				label: 'Edit string',
+				action: () => {
+					logger.info({cursor}, 'Editing string');
 
-		const nodes = collectNavigableNodes(jsonTree);
-		setNavigableNodes(nodes);
-	}, [jsonTree]);
+					if (!cursor.node) {
+						logger.error('No node for cursor');
+						return;
+					}
+
+					const currentNode = cursor.node;
+					if (isStringNode(currentNode)) {
+						setFocusedNode(currentNode);
+					} else if (isPropertyNode(currentNode)) {
+						setFocusedNode(currentNode.value);
+					} else {
+						logger.error('Unexpected node type for editing strings');
+					}
+				},
+				predicate: () => {
+					if (!cursor.node) {
+						return false;
+					}
+
+					const currentNode = cursor.node;
+					const isString = isStringNode(currentNode);
+					let isStringProperty = false;
+					if (isPropertyNode(currentNode)) {
+						isStringProperty = currentNode.value.type === 'String';
+					}
+					return isString || isStringProperty;
+				},
+				showInHelp: true,
+			},
+			{
+				key: Key.modifier('escape'),
+				label: 'Leave json editor',
+				action: () => {
+					logger.info('Leaving json editor');
+					onExit?.();
+				},
+				showInHelp: true,
+			},
+		],
+		[cursor],
+	);
+
+	// Use keybindings hook
+	useKeybindings(keybindings, id);
 
 	if (error) {
 		return (
@@ -274,20 +194,16 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		<Box flexDirection="column" padding={0}>
 			<Text>Editing: {path.basename(filePath)}</Text>
 			<Text>Use j/k to navigate, Esc to exit</Text>
-			{navigableNodes.length > 0 && (
-				<Text color="gray">Current path: {cursorPosition.path}</Text>
-			)}
+			{cursor.path && <Text color="gray">Current path: {cursor.path}</Text>}
 			<Box marginTop={1} flexDirection="column">
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
-						highlightedNode={
-							navigableNodes.length > 0 &&
-							cursorPosition.index < navigableNodes.length
-								? navigableNodes[cursorPosition.index].node
-								: null
-						}
+						cursor={cursor.index}
 						focusedNode={focusedNode}
+						onCursorChange={(change: JsonCursor) => {
+							setCursor(change);
+						}}
 						onStringInputChange={(
 							node: JsonNode,
 							value: string,

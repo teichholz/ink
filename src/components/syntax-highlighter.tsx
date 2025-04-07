@@ -12,8 +12,8 @@ import {
 	isPropertyNode,
 	isStringNode,
 } from '../json-tree/parse-json.js';
-import TextInput, {TextInputProps} from './input.js';
 import {logger} from '../logger.js';
+import TextInput, {TextInputProps} from './input.js';
 
 const DefaultHighlighting = {
 	ARRAY: (x: string) => <Text color="gray">{x}</Text>,
@@ -42,6 +42,11 @@ function ColoredHighlightableText(
 		</Text>
 	);
 }
+export type JsonCursor = {
+	index: number;
+	path: string;
+	node: JsonNode | null;
+};
 
 /**
  * Syntax highlighting options
@@ -65,7 +70,9 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Node to highlight with background color
 	 */
-	highlightedNode?: JsonNode | null;
+	cursor?: number;
+
+	onCursorChange?: (cursor: JsonCursor) => void;
 
 	/**
 	 * Node to focus for string input
@@ -90,7 +97,8 @@ export function SyntaxHighlighter({
 	node,
 	path = '/',
 	syntax = DefaultHighlighting,
-	highlightedNode = null,
+	cursor = 0,
+	onCursorChange = () => {},
 	focusedNode = null,
 	onStringInputChange = () => {},
 	onStringInputSubmit = () => {},
@@ -99,11 +107,14 @@ export function SyntaxHighlighter({
 		logger.info('SyntaxHighlighter rendered');
 	}, [node]);
 
-	return applyHighlighting(0, {
+	const ctr = {count: 0};
+
+	return applyHighlighting(0, ctr, {
 		node,
 		path,
 		syntax,
-		highlightedNode,
+		cursor,
+		onCursorChange,
 		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
@@ -115,24 +126,32 @@ export function SyntaxHighlighter({
  */
 function applyHighlighting(
 	depth: number,
+	ctr: {count: number},
 	props: Required<SyntaxHighlightOptions>,
 ): ReactNode {
 	const {
 		node,
 		path,
 		syntax,
-		highlightedNode,
+		cursor,
+		onCursorChange,
 		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
 	} = props;
 
 	const indent = '  '.repeat(depth);
-	const isHighlighted = node === highlightedNode;
+	const isHighlighted = () => ctr.count === cursor;
+
+	if (isHighlighted()) {
+		logger.info('Cursor is highlighted');
+		onCursorChange({index: cursor, path: path, node: node});
+	}
 
 	const staticOpts = {
 		syntax,
-		highlightedNode,
+		onCursorChange,
+		cursor,
 		focusedNode,
 		onStringInputChange,
 		onStringInputSubmit,
@@ -145,19 +164,17 @@ function applyHighlighting(
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		// React version
 		const properties = node.properties.map(prop => {
-			const key = syntax.PROPERTY(prop.key.raw, isHighlighted);
+			ctr.count++;
+			const key = syntax.PROPERTY(prop.key.raw, isHighlighted());
 			const propPath = `${path}/${prop.key.value}`;
-			const value = applyHighlighting(depth + 1, {
+			const value = applyHighlighting(depth + 1, ctr, {
 				node: prop.value,
 				path: propPath,
 				...staticOpts,
 			});
 
-			// If the property node is highlighted, highlight just the key
-			const propHighlighted = prop === highlightedNode;
-			const formattedKey = propHighlighted ? (
+			const formattedKey = isHighlighted() ? (
 				<Text backgroundColor="gray">{key}</Text>
 			) : (
 				key
@@ -178,7 +195,7 @@ function applyHighlighting(
 
 		return (
 			<React.Fragment>
-				{isHighlighted ? (
+				{isHighlighted() ? (
 					<Text backgroundColor="gray">{openBrace}</Text>
 				) : (
 					openBrace
@@ -191,7 +208,7 @@ function applyHighlighting(
 					</React.Fragment>
 				))}
 				<Text>{indent}</Text>
-				{isHighlighted ? (
+				{isHighlighted() ? (
 					<Text backgroundColor="gray">{closeBrace}</Text>
 				) : (
 					closeBrace
@@ -208,8 +225,9 @@ function applyHighlighting(
 		const childIndent = '  '.repeat(depth + 1);
 
 		const elements = node.elements.map((elem, index) => {
+			ctr.count++;
 			const elemPath = `${path}/${index}`;
-			const value = applyHighlighting(depth + 1, {
+			const value = applyHighlighting(depth + 1, ctr, {
 				node: elem,
 				path: elemPath,
 				...staticOpts,
@@ -228,7 +246,7 @@ function applyHighlighting(
 
 		return (
 			<React.Fragment>
-				{isHighlighted ? (
+				{isHighlighted() ? (
 					<Text backgroundColor="gray">{openBracket}</Text>
 				) : (
 					openBracket
@@ -241,7 +259,7 @@ function applyHighlighting(
 					</React.Fragment>
 				))}
 				<Text>{indent}</Text>
-				{isHighlighted ? (
+				{isHighlighted() ? (
 					<Text backgroundColor="gray">{closeBracket}</Text>
 				) : (
 					closeBracket
@@ -250,9 +268,10 @@ function applyHighlighting(
 		);
 	}
 
+	ctr.count++;
 	if (isPropertyNode(node)) {
-		const key = syntax.PROPERTY(node.key.raw, isHighlighted);
-		const value = applyHighlighting(depth + 1, {
+		const key = syntax.PROPERTY(node.key.raw, isHighlighted());
+		const value = applyHighlighting(depth + 1, ctr, {
 			node: node.value,
 			path: `path/${node.key.value}`,
 			...staticOpts,
@@ -271,24 +290,23 @@ function applyHighlighting(
 	if (isStringNode(node)) {
 		return syntax.STRING({
 			value: node.value,
-			backgroundColor: isHighlighted ? 'grey' : '',
+			backgroundColor: isHighlighted() ? 'grey' : '',
 			focus: node === focusedNode,
 			onChange: string => onStringInputChange(node, string, path),
 			onSubmit: () => onStringInputSubmit(node, path),
-			// key: `string-${node.range[0]}-${node.range[1]}-${node.value}`,
 		});
 	}
 
 	if (isNumberNode(node)) {
-		return syntax.NUMBER(node.raw, isHighlighted);
+		return syntax.NUMBER(node.raw, isHighlighted());
 	}
 
 	if (isBooleanNode(node)) {
-		return syntax.BOOLEAN(node.raw, isHighlighted);
+		return syntax.BOOLEAN(node.raw, isHighlighted());
 	}
 
 	if (isNullNode(node)) {
-		return syntax.NULL(node.raw, isHighlighted);
+		return syntax.NULL(node.raw, isHighlighted());
 	}
 
 	throw new Error(`Unsupported node type: ${node.type}`);
