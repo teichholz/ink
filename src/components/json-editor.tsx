@@ -20,6 +20,7 @@ import {
 import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
 import {SyntaxHighlighter} from './syntax-highlighter.js';
+import {getJsonPointer, JSONValue} from '../jsonpath.js';
 
 type JsonEditorProps = {
 	/**
@@ -39,6 +40,7 @@ type JsonEditorProps = {
 };
 
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
+	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [error, setError] = useState<Error | null>(null);
@@ -192,7 +194,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				return;
 			}
 
-			const [parsedJson, err] = await parseJsonFile(filePath);
+			const [parsed, err] = await parseJsonFile(filePath);
 
 			if (err) {
 				logger.error({error: err}, 'Error parsing JSON file');
@@ -201,6 +203,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				setError(err instanceof Error ? err : new Error(String(err)));
 				return;
 			}
+
+			const [parsedJson, originalJson] = parsed;
+
+			setOriginalJson(originalJson);
 
 			// Format the JSON without syntax highlighting
 			const formattedContent = stringify(parsedJson);
@@ -307,12 +313,22 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								return false;
 							});
 
-							const nodePath = nodeEntry?.path || 'unknown';
+							const nodePath = nodeEntry?.path ?? 'unknown';
+
+							if (nodePath === 'unknown') {
+								logger.error({nodeEntry}, 'Unexpected node path');
+								return;
+							}
 
 							if (isStringNode(node)) {
+								const originalValue = getJsonPointer(
+									originalJson,
+									nodePath,
+								) as string;
 								addStringChange({
 									path: nodePath,
 									value: node.value,
+									originalValue: originalValue,
 									filePath: filePath,
 								});
 								logger.info(
