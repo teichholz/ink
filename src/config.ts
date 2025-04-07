@@ -39,6 +39,11 @@ export type Config = {
 	 * Always the directory containing int.mjs
 	 */
 	rootDir: string;
+
+	/**
+	 * The number of spaces json files should be indented with when they are changed
+	 */
+	jsonIndent: number;
 };
 
 /**
@@ -55,6 +60,7 @@ export async function getConfig(): Promise<Result<Config, Error>> {
 	const configModule = await import(configPath);
 	const config = configModule.default as Config;
 	config.rootDir = dirname(configPath);
+	config.jsonIndent = config.jsonIndent ?? 2;
 
 	return Res.ok(config);
 }

@@ -2,7 +2,13 @@ import { compile } from "jsonpointer";
 import { logger } from "./logger.js";
 import { Res, type Result } from "./types.js";
 
-type JSONValue = string | number | boolean | null | JSONArray | JSONObject;
+export type JSONValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JSONArray
+	| JSONObject;
 
 interface JSONObject {
 	[key: string]: JSONValue;
@@ -13,8 +19,8 @@ interface JSONArray extends Array<JSONValue> {}
 export function getJsonPointer(
 	json: JSONValue,
 	path: string,
-	replacements: Map<string, string>,
-): object[] {
+	replacements: Map<string, string> = new Map(),
+): JSONValue {
 	const regex = new RegExp(replacements.keys().toArray().join("|"), "g");
 	const augmentedPath = path.replaceAll(
 		regex,

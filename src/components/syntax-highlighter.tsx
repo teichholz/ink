@@ -254,6 +254,7 @@ function applyHighlighting(
 		const key = syntax.PROPERTY(node.key.raw, isHighlighted);
 		const value = applyHighlighting(depth + 1, {
 			node: node.value,
+			path: `path/${node.key.value}`,
 			...staticOpts,
 		});
 

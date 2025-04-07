@@ -288,7 +288,11 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								: null
 						}
 						focusedNode={focusedNode}
-						onStringInputChange={(node: JsonNode, value: string, path: string) => {
+						onStringInputChange={(
+							node: JsonNode,
+							value: string,
+							path: string,
+						) => {
 							logger.info({value, path}, 'Edited value');
 
 							if (isStringNode(node)) {

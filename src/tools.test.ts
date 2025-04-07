@@ -18,6 +18,7 @@ describe("Tools", () => {
 			jsonPath: "$",
 			languagePriority: ["en", "fr"],
 			mustHaveLabelFiles: ["en", "fr"],
+			jsonIndent: 2,
 			// Other config properties not needed for this test
 		};
 

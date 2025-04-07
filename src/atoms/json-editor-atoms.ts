@@ -3,6 +3,11 @@ import { atom } from "jotai";
 // Define the type for string changes
 export type JsonEdit = {
 	path: string;
+	/**
+	 * If the edit changed the value of a label, this is the label
+	 */
+	label?: string;
+	originalValue: string;
 	value: string;
 	timestamp: number;
 	filePath: string;

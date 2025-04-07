@@ -7,6 +7,7 @@ import type {
 	Property,
 } from "acorn";
 import { type ExpressionStatement, parse } from "acorn";
+import type { JSONValue } from "../jsonpath.js";
 import { Res, type Result } from "../types.js";
 
 /**
@@ -150,10 +151,17 @@ export function isNullNode(node: JsonNode): node is JsonNullNode {
 
 export async function parseJsonFile(
 	file: string,
-): Promise<Result<JsonNode, Error>> {
+): Promise<Result<[JsonNode, JSONValue], Error>> {
 	try {
 		const fileContent = await readFile(file, "utf-8");
-		return parseJson(fileContent);
+
+		const [jsonNode, err] = parseJson(fileContent);
+
+		if (err) {
+			return Res.err(err);
+		}
+
+		return Res.ok([jsonNode, JSON.parse(fileContent)]);
 	} catch (error) {
 		return Res.err(error as Error);
 	}
