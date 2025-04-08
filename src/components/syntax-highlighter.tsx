@@ -4,7 +4,6 @@ import React, {ReactNode} from 'react';
 import {LiteralUnion} from 'type-fest';
 import {
 	type JsonNode,
-	JsonStringNode,
 	isArrayNode,
 	isBooleanNode,
 	isNullNode,
@@ -13,7 +12,6 @@ import {
 	isStringNode,
 } from '../json-tree/parse-json.js';
 import {UncontrolledTextInput, UncontrolledTextInputProps} from './input.js';
-import {logger} from '../logger.js';
 
 const DefaultHighlighting = {
 	ARRAY: ColoredText('gray'),
@@ -221,14 +219,6 @@ function applyHighlighting(
 	}
 
 	if (isStringNode(node)) {
-		logger.info(
-			{
-				edit: (edit as JsonStringNode)?.value,
-				node: node.value,
-				equals: edit === node,
-			},
-			'String node',
-		);
 		return applyCursorHighlight(
 			syntax.STRING({
 				initialValue: node.value,

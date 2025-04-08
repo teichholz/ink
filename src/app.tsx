@@ -221,7 +221,13 @@ function AppContent({tools, config}: Props) {
 		focus(next);
 	};
 
-	useInput((input, _key) => {
+	useInput((input, mod) => {
+		// write code to workaround escape
+		if (mod.escape) {
+			focus(hasFocus);
+			return;
+		}
+
 		if (input == '?') {
 			logger.info('Showing vertical help');
 			const globalHelpText = `Global\n${activeGlobalKeybindings?.keybindings
@@ -359,7 +365,12 @@ function AppContent({tools, config}: Props) {
 						}}
 					/>
 				</Box>
-				<Box width="75%" borderStyle="round" flexDirection="column">
+				<Box
+					height="100%"
+					width="75%"
+					borderStyle="round"
+					flexDirection="column"
+				>
 					{selectedLabel ? (
 						<LabelPreview label={selectedLabel} />
 					) : selectedFile ? (

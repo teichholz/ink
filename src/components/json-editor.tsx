@@ -1,9 +1,15 @@
-import {Box, Text} from 'ink';
+import Fuse from 'fuse.js';
+import {Box, Spacer, Text, useInput} from 'ink';
+import {useAtom} from 'jotai';
 import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
-import {useAtom} from 'jotai';
 import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
+import {
+	getNavigableNodes,
+	isPrimitive,
+	NavigableNode,
+} from '../json-tree/json-util.js';
 import {
 	isPropertyNode,
 	isStringNode,
@@ -13,10 +19,10 @@ import {
 	parseJsonFile,
 } from '../json-tree/parse-json.js';
 import {stringify} from '../json-tree/syntax-highlight.js';
-import {logger} from '../logger.js';
-import {SyntaxHighlighter} from './syntax-highlighter.js';
 import {getJsonPointer, JSONValue} from '../jsonpath.js';
-import {getNavigableNodes, NavigableNode} from '../json-tree/json-util.js';
+import {logger} from '../logger.js';
+import TextInput from './input.js';
+import {SyntaxHighlighter} from './syntax-highlighter.js';
 
 type JsonEditorProps = {
 	/**
@@ -41,6 +47,11 @@ type JsonCursor = {
 	node?: JsonNode;
 };
 
+type Search = {
+	query: string;
+	doSearch: boolean;
+};
+
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
@@ -51,6 +62,11 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	const [cursor, setCursor] = useState<JsonCursor>({
 		path: '/',
+	});
+
+	const [search, setSearch] = useState<Search>({
+		query: '',
+		doSearch: false,
 	});
 
 	useEffect(() => {
@@ -104,6 +120,38 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		loadFile();
 	}, [filePath]);
 
+	/**
+	 * Fuse.js instance for fuzzy search
+	 *
+	 * Search over both property keys and property values if the value is string / boolean / number
+	 */
+	const fuse = useMemo(() => {
+		return new Fuse(navigableNodes, {
+			getFn: (node, _) => {
+				const jsonNode = node.node;
+				if (isPrimitive(jsonNode)) {
+					// @ts-ignore
+					return String(jsonNode.value);
+				}
+
+				if (isPropertyNode(jsonNode)) {
+					const keyval = jsonNode.key.value;
+					let valval: string[] = [];
+					if (isPrimitive(jsonNode.value)) {
+						// @ts-ignore
+						valval = [jsonNode.value.value];
+					}
+					return [keyval, ...valval];
+				}
+
+				return [];
+			},
+			threshold: 0.4,
+			isCaseSensitive: false,
+			useExtendedSearch: true,
+		});
+	}, [navigableNodes]);
+
 	const keybindings = useMemo<Keybinding[]>(
 		() => [
 			{
@@ -147,19 +195,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					const currentNode = cursor.node;
 					if (isStringNode(currentNode)) {
 						setFocusedNode(currentNode);
-						logger.info(
-							{path: cursor.path, node: currentNode},
-							'Editing string node',
-						);
 					} else if (isPropertyNode(currentNode)) {
 						setFocusedNode(currentNode.value);
-						logger.info(
-							{
-								path: cursor.path,
-								node: currentNode.value,
-							},
-							'Editing property node',
-						);
 					} else {
 						logger.error('Unexpected node type for editing strings');
 					}
@@ -180,20 +217,73 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 			{
-				key: Key.modifier('escape'),
-				label: 'Leave json editor',
+				key: Key.create('/'),
+				label: 'Search',
 				action: () => {
+					setSearch(prev => {
+						return {
+							...prev,
+							doSearch: true,
+						};
+					});
+				},
+			},
+			{
+				key: Key.modifier('return'),
+				label: 'Leave search',
+				action: () => {
+					setSearch(prev => {
+						return {
+							...prev,
+							doSearch: false,
+						};
+					});
+				},
+				predicate: () => search.doSearch,
+			},
+			{
+				key: Key.modifier('escape'),
+				label: search.doSearch ? 'Leave search' : 'Leave json editor',
+				action: () => {
+					if (search.doSearch) {
+						setSearch(prev => {
+							return {
+								...prev,
+								doSearch: false,
+							};
+						});
+						return;
+					}
+
 					logger.info('Leaving json editor');
 					onExit?.();
 				},
 				showInHelp: true,
 			},
 		],
-		[cursor, navigableNodes],
+		[cursor, navigableNodes, search],
 	);
 
-	// Use keybindings hook
+	useInput((_, mod) => {
+		if (mod.escape) {
+			return;
+		}
+	});
 	useKeybindings(keybindings, id);
+
+	useEffect(() => {
+		if (!search.query) {
+			return;
+		}
+
+		try {
+			const searched = fuse.search(search.query);
+			const winner = searched[0]?.item;
+			setCursor(winner);
+		} catch (error) {
+			return;
+		}
+	}, [search.query]);
 
 	if (error) {
 		return (
@@ -261,6 +351,30 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						}}
 					/>
 				</Text>
+				{search.doSearch && (
+					<Box flexDirection="column">
+						<Spacer />
+						<Box borderStyle="round" borderColor="yellow" flexDirection="row">
+							<Text color="yellow" bold>
+								{' '}
+								/{' '}
+							</Text>
+							<Text bold>
+								<TextInput
+									value={search.query}
+									onChange={search => {
+										setSearch(prev => {
+											return {
+												...prev,
+												query: search,
+											};
+										});
+									}}
+								/>
+							</Text>
+						</Box>
+					</Box>
+				)}
 			</Box>
 		</Box>
 	);

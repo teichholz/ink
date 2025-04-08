@@ -57,7 +57,8 @@ type LetterKey =
 	| 'x'
 	| 'y'
 	| 'z'
-	| '?';
+	| '?'
+	| '/';
 
 export type KeyCombo = {
 	/**
