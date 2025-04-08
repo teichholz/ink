@@ -17,32 +17,39 @@ export function isPrimitive(node: JsonNode): boolean {
 	);
 }
 
-export function countHighlightableNodes(node: JsonNode): number {
+export type NavigableNode = {
+	node: JsonNode;
+
+	/**
+	 * json pointer path to the node
+	 */
+	path: string;
+};
+
+export function getHighlightableNodes(node: JsonNode): JsonNode[] {
 	if (isPrimitive(node)) {
-		return 1;
+		return [node];
 	}
 
-	return innerCountNodes(node);
-}
-
-function innerCountNodes(node: JsonNode): number {
-	if (isPrimitive(node)) {
-		return 0;
-	}
+	const result: JsonNode[] = [];
 
 	if (isObjectNode(node)) {
-		return node.properties.reduce(
-			(acc, prop) => acc + 1 + innerCountNodes(prop.value),
-			0,
-		);
+		for (const prop of node.properties) {
+			if (!isPrimitive(prop.value)) {
+				result.push(...getHighlightableNodes(prop.value));
+			} else {
+				result.push(prop.key);
+			}
+		}
+	} else if (isArrayNode(node)) {
+		for (const elem of node.elements) {
+			if (isPrimitive(elem)) {
+				result.push(elem);
+			} else {
+				result.push(...getHighlightableNodes(elem));
+			}
+		}
 	}
 
-	if (isArrayNode(node)) {
-		return node.elements.reduce(
-			(acc, elem) => acc + (isPrimitive(elem) ? 1 : innerCountNodes(elem)),
-			0,
-		);
-	}
-
-	return 0;
+	return result;
 }

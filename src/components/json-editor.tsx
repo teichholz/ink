@@ -16,6 +16,7 @@ import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
 import {JsonCursor, SyntaxHighlighter} from './syntax-highlighter.js';
 import {getJsonPointer, JSONValue} from '../jsonpath.js';
+import {getHighlightableNodes} from '../json-tree/json-util.js';
 
 type JsonEditorProps = {
 	/**
@@ -38,13 +39,12 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
+	const [highlightableNodes, setHighlightableNodes] = useState<JsonNode[]>([]);
 	const [error, setError] = useState<Error | null>(null);
 	const [, addStringChange] = useAtom(addJsonEditAtom);
 
 	const [cursor, setCursor] = useState<JsonCursor>({
-		index: 0,
 		path: '/',
-		node: null,
 	});
 
 	useEffect(() => {
@@ -89,8 +89,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			logger.info('Set highlighted content due to file path change');
 
 			setJsonTree(json as JsonValueNode);
+			setCursor({path: '/', index: 0, node: highlightableNodes[0]});
+			const h = getHighlightableNodes(json);
+			setHighlightableNodes(h);
 			setError(null);
-			setCursor({index: 0, path: '/', node: null});
 		};
 
 		loadFile();
@@ -102,9 +104,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('j'),
 				label: 'Move cursor down',
 				action: () => {
-					logger.info('Moving cursor down');
+					logger.info({path: cursor.path}, 'Moving cursor down');
 					setCursor(prev => {
-						return {...prev, index: prev.index + 1};
+						const next = ((prev.index ?? 0) + 1) % highlightableNodes.length;
+						return {...prev, index: next, node: highlightableNodes[next]};
 					});
 				},
 				showInHelp: true,
@@ -113,9 +116,13 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('k'),
 				label: 'Move cursor up',
 				action: () => {
-					logger.info('Moving cursor up');
+					logger.info({path: cursor.path}, 'Moving cursor up');
 					setCursor(prev => {
-						return {...prev, index: prev.index - 1};
+						let next = (prev.index ?? 0) - 1;
+						if (next < 0) {
+							next = highlightableNodes.length - 1;
+						}
+						return {...prev, index: next, node: highlightableNodes[next]};
 					});
 				},
 				showInHelp: true,
@@ -124,7 +131,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('r'),
 				label: 'Edit string',
 				action: () => {
-					logger.info({cursor}, 'Editing string');
+					logger.info({path: cursor.path}, 'Editing string');
 
 					if (!cursor.node) {
 						logger.error('No node for cursor');
@@ -165,7 +172,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[cursor.node],
+		[cursor, highlightableNodes],
 	);
 
 	// Use keybindings hook
@@ -205,9 +212,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
-						cursor={cursor.index}
+						cursor={cursor.node}
 						focusedNode={focusedNode}
-						onCursorChange={setCursor}
 						onStringInputSubmit={(node: JsonNode, path: string) => {
 							logger.info({path}, 'Submitted string');
 
