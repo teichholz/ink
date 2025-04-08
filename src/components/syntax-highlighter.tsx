@@ -37,11 +37,6 @@ const DefaultHighlighting = {
 function ColoredText(color: LiteralUnion<ForegroundColorName, string>) {
 	return (x: string) => <Text color={color}>{x}</Text>;
 }
-export type JsonCursor = {
-	path: string;
-	index?: number;
-	node?: JsonNode;
-};
 
 /**
  * Syntax highlighting options
@@ -65,7 +60,7 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Node to focus for string input
 	 */
-	focusedNode?: JsonNode | null;
+	edit?: JsonNode | null;
 
 	/**
 	 * Callback when a string node has changed
@@ -87,7 +82,7 @@ export function SyntaxHighlighter({
 	node,
 	syntax = DefaultHighlighting,
 	cursor = null,
-	focusedNode = null,
+	edit = null,
 	onStringInputChange = () => {},
 	onStringInputSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
@@ -95,7 +90,7 @@ export function SyntaxHighlighter({
 		node,
 		syntax,
 		cursor,
-		focusedNode,
+		edit,
 		onStringInputChange,
 		onStringInputSubmit,
 	});
@@ -110,7 +105,7 @@ function applyHighlighting(
 		path = '',
 		syntax,
 		cursor,
-		focusedNode,
+		edit,
 		onStringInputChange,
 		onStringInputSubmit,
 	}: Required<SyntaxHighlightOptions> & {path?: string},
@@ -127,7 +122,7 @@ function applyHighlighting(
 	const staticOpts = {
 		syntax,
 		cursor,
-		focusedNode,
+		edit,
 		onStringInputChange,
 		onStringInputSubmit,
 	};
@@ -223,7 +218,7 @@ function applyHighlighting(
 		return applyCursorHighlight(
 			syntax.STRING({
 				initialValue: node.value,
-				focus: node === focusedNode,
+				focus: node === edit,
 				onSubmit: () => onStringInputSubmit(node, path),
 			}),
 			node,
