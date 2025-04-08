@@ -39,7 +39,7 @@ export function getNavigableNodes(node: JsonNode, path = ""): NavigableNode[] {
 			if (!isPrimitive(prop.value)) {
 				result.push(...getNavigableNodes(prop.value, propPath));
 			} else {
-				result.push({ node: prop.key, path: propPath });
+				result.push({ node: prop, path: propPath });
 			}
 		}
 	} else if (isArrayNode(node)) {

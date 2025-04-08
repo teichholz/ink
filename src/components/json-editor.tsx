@@ -149,13 +149,16 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						setFocusedNode(currentNode);
 						logger.info(
 							{path: cursor.path, node: currentNode},
-							'Editing string',
+							'Editing string node',
 						);
 					} else if (isPropertyNode(currentNode)) {
 						setFocusedNode(currentNode.value);
 						logger.info(
-							{path: cursor.path, node: currentNode.value},
-							'Editing string',
+							{
+								path: cursor.path,
+								node: currentNode.value,
+							},
+							'Editing property node',
 						);
 					} else {
 						logger.error('Unexpected node type for editing strings');
@@ -226,7 +229,13 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
-						cursor={cursor.node}
+						cursor={
+							cursor.node
+								? isPropertyNode(cursor.node)
+									? cursor.node.key
+									: cursor.node
+								: null
+						}
 						edit={focusedNode}
 						onStringInputSubmit={(node: JsonNode, path: string) => {
 							logger.info({path}, 'Submitted string');
