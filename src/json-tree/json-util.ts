@@ -26,27 +26,30 @@ export type NavigableNode = {
 	path: string;
 };
 
-export function getHighlightableNodes(node: JsonNode): JsonNode[] {
+export function getHighlightableNodes(node: JsonNode, path = ""): NavigableNode[] {
 	if (isPrimitive(node)) {
-		return [node];
+		return [{ node, path }];
 	}
 
-	const result: JsonNode[] = [];
+	const result: NavigableNode[] = [];
 
 	if (isObjectNode(node)) {
 		for (const prop of node.properties) {
+			const propPath = `${path}/${prop.key.value}`;
 			if (!isPrimitive(prop.value)) {
-				result.push(...getHighlightableNodes(prop.value));
+				result.push(...getHighlightableNodes(prop.value, propPath));
 			} else {
-				result.push(prop.key);
+				result.push({ node: prop.key, path: propPath });
 			}
 		}
 	} else if (isArrayNode(node)) {
-		for (const elem of node.elements) {
+		for (let i = 0; i < node.elements.length; i++) {
+			const elem = node.elements[i];
+			const elemPath = `${path}/${i}`;
 			if (isPrimitive(elem)) {
-				result.push(elem);
+				result.push({ node: elem, path: elemPath });
 			} else {
-				result.push(...getHighlightableNodes(elem));
+				result.push(...getHighlightableNodes(elem, elemPath));
 			}
 		}
 	}
