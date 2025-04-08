@@ -14,9 +14,9 @@ import {
 } from '../json-tree/parse-json.js';
 import {stringify} from '../json-tree/syntax-highlight.js';
 import {logger} from '../logger.js';
-import {JsonCursor, SyntaxHighlighter} from './syntax-highlighter.js';
+import {SyntaxHighlighter} from './syntax-highlighter.js';
 import {getJsonPointer, JSONValue} from '../jsonpath.js';
-import {getHighlightableNodes} from '../json-tree/json-util.js';
+import {getNavigableNodes, NavigableNode} from '../json-tree/json-util.js';
 
 type JsonEditorProps = {
 	/**
@@ -35,11 +35,17 @@ type JsonEditorProps = {
 	onExit?: () => void;
 };
 
+type JsonCursor = {
+	path: string;
+	index?: number;
+	node?: JsonNode;
+};
+
 export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
-	const [highlightableNodes, setHighlightableNodes] = useState<JsonNode[]>([]);
+	const [navigableNodes, setNavigableNodes] = useState<NavigableNode[]>([]);
 	const [error, setError] = useState<Error | null>(null);
 	const [, addStringChange] = useAtom(addJsonEditAtom);
 
@@ -89,9 +95,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			logger.info('Set highlighted content due to file path change');
 
 			setJsonTree(json as JsonValueNode);
-			setCursor({path: '/', index: 0, node: highlightableNodes[0]});
-			const h = getHighlightableNodes(json);
-			setHighlightableNodes(h);
+			const navigable = getNavigableNodes(json);
+			setNavigableNodes(navigable);
+			setCursor({path: '/', index: 0, node: navigable[0].node});
 			setError(null);
 		};
 
@@ -106,8 +112,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				action: () => {
 					logger.info({path: cursor.path}, 'Moving cursor down');
 					setCursor(prev => {
-						const next = ((prev.index ?? 0) + 1) % highlightableNodes.length;
-						return {...prev, index: next, node: highlightableNodes[next]};
+						const next = ((prev.index ?? 0) + 1) % navigableNodes.length;
+						const nextNode = navigableNodes[next];
+						return {index: next, node: nextNode.node, path: nextNode.path};
 					});
 				},
 				showInHelp: true,
@@ -120,9 +127,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					setCursor(prev => {
 						let next = (prev.index ?? 0) - 1;
 						if (next < 0) {
-							next = highlightableNodes.length - 1;
+							next = navigableNodes.length - 1;
 						}
-						return {...prev, index: next, node: highlightableNodes[next]};
+						const nextNode = navigableNodes[next];
+						return {index: next, node: nextNode.node, path: nextNode.path};
 					});
 				},
 				showInHelp: true,
@@ -131,8 +139,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				key: Key.create('r'),
 				label: 'Edit string',
 				action: () => {
-					logger.info({path: cursor.path}, 'Editing string');
-
 					if (!cursor.node) {
 						logger.error('No node for cursor');
 						return;
@@ -141,8 +147,16 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					const currentNode = cursor.node;
 					if (isStringNode(currentNode)) {
 						setFocusedNode(currentNode);
+						logger.info(
+							{path: cursor.path, node: currentNode},
+							'Editing string',
+						);
 					} else if (isPropertyNode(currentNode)) {
 						setFocusedNode(currentNode.value);
+						logger.info(
+							{path: cursor.path, node: currentNode.value},
+							'Editing string',
+						);
 					} else {
 						logger.error('Unexpected node type for editing strings');
 					}
@@ -172,7 +186,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				showInHelp: true,
 			},
 		],
-		[cursor, highlightableNodes],
+		[cursor, navigableNodes],
 	);
 
 	// Use keybindings hook
@@ -213,7 +227,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					<SyntaxHighlighter
 						node={jsonTree}
 						cursor={cursor.node}
-						focusedNode={focusedNode}
+						edit={focusedNode}
 						onStringInputSubmit={(node: JsonNode, path: string) => {
 							logger.info({path}, 'Submitted string');
 

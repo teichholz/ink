@@ -26,7 +26,7 @@ export type NavigableNode = {
 	path: string;
 };
 
-export function getHighlightableNodes(node: JsonNode, path = ""): NavigableNode[] {
+export function getNavigableNodes(node: JsonNode, path = ""): NavigableNode[] {
 	if (isPrimitive(node)) {
 		return [{ node, path }];
 	}
@@ -37,7 +37,7 @@ export function getHighlightableNodes(node: JsonNode, path = ""): NavigableNode[
 		for (const prop of node.properties) {
 			const propPath = `${path}/${prop.key.value}`;
 			if (!isPrimitive(prop.value)) {
-				result.push(...getHighlightableNodes(prop.value, propPath));
+				result.push(...getNavigableNodes(prop.value, propPath));
 			} else {
 				result.push({ node: prop.key, path: propPath });
 			}
@@ -49,7 +49,7 @@ export function getHighlightableNodes(node: JsonNode, path = ""): NavigableNode[
 			if (isPrimitive(elem)) {
 				result.push({ node: elem, path: elemPath });
 			} else {
-				result.push(...getHighlightableNodes(elem, elemPath));
+				result.push(...getNavigableNodes(elem, elemPath));
 			}
 		}
 	}

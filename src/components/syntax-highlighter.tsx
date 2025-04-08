@@ -112,7 +112,11 @@ function applyHighlighting(
 ): ReactNode {
 	const indent = '  '.repeat(depth);
 	const applyCursorHighlight = (element: ReactNode, node: JsonNode) => {
-		if (cursor && node.range[0] === cursor.range[0] && node.range[1] === cursor.range[1]) {
+		if (
+			cursor &&
+			node.range[0] === cursor.range[0] &&
+			node.range[1] === cursor.range[1]
+		) {
 			return syntax.CURSORHIGHLIGHT(element);
 		}
 		return element;
@@ -218,7 +222,10 @@ function applyHighlighting(
 		return applyCursorHighlight(
 			syntax.STRING({
 				initialValue: node.value,
-				focus: edit && node.range[0] === edit.range[0] && node.range[1] === edit.range[1],
+				focus:
+					(edit || false) &&
+					node.range[0] === edit.range[0] &&
+					node.range[1] === edit.range[1],
 				onSubmit: () => onStringInputSubmit(node, path),
 			}),
 			node,
