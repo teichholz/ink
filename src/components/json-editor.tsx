@@ -349,22 +349,27 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								: null
 						}
 						edit={focusedNode}
-						onStringInputSubmit={(node: JsonNode, path: string) => {
+						renderRange={[0, 25]}
+						onStringInputSubmit={(newValue: string, path: string) => {
 							logger.info({path}, 'Submitted string');
 
-							if (isStringNode(node)) {
+							if (!focusedNode) {
+								return;
+							}
+
+							if (isStringNode(focusedNode)) {
 								const originalValue = getJsonPointer(
 									originalJson,
 									path,
 								) as string;
 								addStringChange({
 									path: path,
-									value: node.value,
+									value: newValue,
 									originalValue: originalValue,
 									filePath: filePath,
 								});
 								logger.info(
-									{path, value: node.value, filePath},
+									{path, value: newValue, filePath},
 									'Saved string change',
 								);
 							}

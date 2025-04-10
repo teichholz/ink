@@ -63,6 +63,11 @@ export type SyntaxHighlightOptions = {
 	edit?: JsonNode | null;
 
 	/**
+	 * Range of lines to render
+	 */
+	renderRange?: [number, number];
+
+	/**
 	 * Callback when a string node has changed
 	 *
 	 * @deprecated Use onStringInputSubmit instead
@@ -72,7 +77,7 @@ export type SyntaxHighlightOptions = {
 	/**
 	 * Callback when a string node is submitted
 	 */
-	onStringInputSubmit?: (node: JsonNode, path: string) => void;
+	onStringInputSubmit?: (value: string, path: string) => void;
 };
 
 /**
@@ -83,6 +88,7 @@ export function SyntaxHighlighter({
 	syntax = DefaultHighlighting,
 	cursor = null,
 	edit = null,
+	renderRange = [0, Infinity],
 	onStringInputChange = () => {},
 	onStringInputSubmit = () => {},
 }: SyntaxHighlightOptions): ReactNode {
@@ -91,6 +97,7 @@ export function SyntaxHighlighter({
 		syntax,
 		cursor,
 		edit,
+		renderRange,
 		onStringInputChange,
 		onStringInputSubmit,
 	});
@@ -106,6 +113,7 @@ function applyHighlighting(
 		syntax,
 		cursor,
 		edit,
+		renderRange,
 		onStringInputChange,
 		onStringInputSubmit,
 	}: Required<SyntaxHighlightOptions> & {path?: string},
@@ -121,22 +129,32 @@ function applyHighlighting(
 		}
 		return element;
 	};
+	const inRenderRange = (node: JsonNode): boolean =>
+		node.loc.start.line >= renderRange[0] &&
+		node.loc.end.line <= renderRange[1];
 
 	// options that are static for the entire tree
 	const staticOpts = {
 		syntax,
 		cursor,
 		edit,
+		renderRange,
 		onStringInputChange,
 		onStringInputSubmit,
 	};
 
 	if (isObjectNode(node)) {
-		if (node.properties.length === 0) {
+		if (node.properties.length === 0 && inRenderRange(node)) {
 			return syntax.OBJECT('{}');
 		}
 
 		const childIndent = '  '.repeat(depth + 1);
+
+		const propsInRenderRange = node.properties.map(node =>
+			inRenderRange(node.key),
+		);
+		const firstPropInRenderRange = propsInRenderRange.at(0) ?? false;
+		const lastPropInRenderRange = propsInRenderRange.at(-1) ?? false;
 
 		const properties = node.properties.map(prop => {
 			const key = applyCursorHighlight(syntax.PROPERTY(prop.key.raw), prop.key);
@@ -157,27 +175,45 @@ function applyHighlighting(
 			);
 		});
 
-		const openBrace = syntax.OBJECT('{\n');
-		const closeBrace = syntax.OBJECT('}');
+		const openBrace = firstPropInRenderRange ? (
+			syntax.OBJECT('{\n')
+		) : (
+			<Text></Text>
+		);
+		const closeBrace = lastPropInRenderRange ? (
+			<>
+				<Text>{indent}</Text>
+				{syntax.OBJECT('}')}
+			</>
+		) : (
+			<Text></Text>
+		);
+
+		const propOrEmpty = (prop: ReactNode, i: number) => {
+			if (!propsInRenderRange.at(i)) {
+				return <Text></Text>;
+			}
+
+			return (
+				<React.Fragment key={i}>
+					{prop}
+					{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
+					{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
+				</React.Fragment>
+			);
+		};
 
 		return (
 			<React.Fragment>
 				{openBrace}
-				{properties.map((prop, i) => (
-					<React.Fragment key={i}>
-						{prop}
-						{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
-						{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
-					</React.Fragment>
-				))}
-				<Text>{indent}</Text>
+				{properties.map(propOrEmpty)}
 				{closeBrace}
 			</React.Fragment>
 		);
 	}
 
 	if (isArrayNode(node)) {
-		if (node.elements.length === 0) {
+		if (node.elements.length === 0 && inRenderRange(node)) {
 			return syntax.ARRAY('[]');
 		}
 
@@ -190,6 +226,10 @@ function applyHighlighting(
 				path: elemPath,
 				...staticOpts,
 			});
+
+			if (!inRenderRange(elem)) {
+				return <Text></Text>;
+			}
 
 			return (
 				<React.Fragment>
@@ -218,12 +258,16 @@ function applyHighlighting(
 		);
 	}
 
+	if (!inRenderRange(node)) {
+		return <Text></Text>;
+	}
+
 	if (isStringNode(node)) {
 		return applyCursorHighlight(
 			syntax.STRING({
 				initialValue: node.value,
 				focus: edit === node,
-				onSubmit: () => onStringInputSubmit(node, path),
+				onSubmit: value => onStringInputSubmit(value, path),
 			}),
 			node,
 		);

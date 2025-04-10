@@ -20,7 +20,6 @@ function DiffDisplay({diff}: DiffDisplayProps) {
 					key={index}
 					color={part.added ? 'green' : part.removed ? 'red' : 'gray'}
 				>
-					{part.added ? '+ ' : part.removed ? '- ' : '  '}
 					{part.value}
 				</Text>
 			))}
@@ -42,12 +41,7 @@ function DeltaItem({path, filePath, timestamp, diff}: DeltaItemProps) {
 	const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 
 	return (
-		<Box
-			flexDirection="column"
-			borderStyle="round"
-			padding={1}
-			marginBottom={1}
-		>
+		<Box flexDirection="column">
 			<Text bold>
 				Path: <Text color="blue">{path}</Text>
 			</Text>
@@ -55,7 +49,7 @@ function DeltaItem({path, filePath, timestamp, diff}: DeltaItemProps) {
 				File: <Text color="yellow">{basename(filePath)}</Text>
 			</Text>
 			<Text>Time: {formattedDate}</Text>
-			<Box marginTop={1}>
+			<Box>
 				<DiffDisplay diff={diff} />
 			</Box>
 		</Box>
@@ -107,7 +101,12 @@ export default function DeltaLog() {
 	);
 
 	return (
-		<Box flexDirection="column" borderStyle="round" width="100%">
+		<Box
+			overflow="hidden"
+			flexDirection="column"
+			borderStyle="round"
+			width="100%"
+		>
 			<Box flexDirection="column" flexGrow={1}>
 				{edits.length === 0 ? (
 					<Box>

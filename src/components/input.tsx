@@ -227,13 +227,26 @@ export type UncontrolledTextInputProps = {
 	 * Initial value.
 	 */
 	readonly initialValue?: string;
-} & Except<TextInputProps, 'value' | 'onChange'>;
+
+	/**
+	 * Function to call when `Enter` is pressed.
+	 */
+	readonly onSubmit?: (value: string) => void;
+} & Except<TextInputProps, 'value' | 'onChange' | 'onSubmit'>;
 
 export function UncontrolledTextInput({
 	initialValue = '',
+	onSubmit,
 	...props
 }: UncontrolledTextInputProps) {
 	const [value, setValue] = useState(initialValue);
 
-	return <TextInput {...props} value={value} onChange={setValue} />;
+	return (
+		<TextInput
+			{...props}
+			value={value}
+			onChange={setValue}
+			onSubmit={() => onSubmit?.(value)}
+		/>
+	);
 }
