@@ -19,6 +19,7 @@ import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
 import {logger} from './logger.js';
 import {extractLabelsFromFile, find, Tools} from './tools.js';
 import {amountOfjsonEditsAtom} from './atoms/json-editor-atoms.js';
+import DeltaLog from './components/delta-log.js';
 
 type Props = {
 	name: string | undefined;
@@ -365,25 +366,25 @@ function AppContent({tools, config}: Props) {
 						}}
 					/>
 				</Box>
-				<Box
-					height="100%"
-					width="75%"
-					borderStyle="round"
-					flexDirection="column"
-				>
-					{selectedLabel ? (
-						<LabelPreview label={selectedLabel} />
-					) : selectedFile ? (
-						<JsonEditor
-							id="json-editor"
-							filePath={Array.from(selectedFile.paths)[0]}
-							onExit={() => {
-								focus(hasFocus);
-							}}
-						/>
-					) : (
-						<FilePreview file={selectedFile} />
-					)}
+				<Box height="100%" width="75%" flexDirection="column">
+					<Box height="75%" width="100%">
+						{selectedLabel ? (
+							<LabelPreview label={selectedLabel} />
+						) : selectedFile ? (
+							<JsonEditor
+								id="json-editor"
+								filePath={Array.from(selectedFile.paths)[0]}
+								onExit={() => {
+									focus(hasFocus);
+								}}
+							/>
+						) : (
+							<FilePreview file={selectedFile} />
+						)}
+					</Box>
+					<Box height="25%" width="100%">
+						<DeltaLog />
+					</Box>
 				</Box>
 			</Box>
 

@@ -2,6 +2,9 @@ import { atom } from "jotai";
 
 // Define the type for string changes
 export type JsonEdit = {
+	/**
+	 * json pointer
+	 */
 	path: string;
 	/**
 	 * If the edit changed the value of a label, this is the label
