@@ -1,7 +1,6 @@
 import Fuse from 'fuse.js';
-import {Box, Spacer, Text, useInput} from 'ink';
+import {Box, Text, useInput} from 'ink';
 import {useAtom} from 'jotai';
-import path from 'path';
 import {useEffect, useMemo, useState} from 'react';
 import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
@@ -127,6 +126,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	 */
 	const fuse = useMemo(() => {
 		return new Fuse(navigableNodes, {
+			keys: ['node'],
 			getFn: (node, _) => {
 				const jsonNode = node.node;
 				if (isPrimitive(jsonNode)) {
@@ -206,6 +206,10 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						return false;
 					}
 
+					if (search.doSearch) {
+						return false;
+					}
+
 					const currentNode = cursor.node;
 					const isString = isStringNode(currentNode);
 					let isStringProperty = false;
@@ -273,18 +277,25 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	useKeybindings(keybindings, id);
 
 	useEffect(() => {
-		if (!search.query) {
+		if (!search.query || !search.doSearch) {
 			return;
 		}
 
 		try {
 			const searched = fuse.search(search.query);
 			const winner = searched[0]?.item;
-			setCursor(winner);
+			logger.info({query: search.query, winner, searched}, 'Search result');
+			setCursor(prev => {
+				return {
+					...prev,
+					index: navigableNodes.indexOf(winner),
+					node: winner?.node,
+				};
+			});
 		} catch (error) {
 			return;
 		}
-	}, [search.query]);
+	}, [search]);
 
 	if (error) {
 		return (
@@ -312,11 +323,21 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	}
 
 	return (
-		<Box height="100%" flexDirection="column" borderStyle="round" padding={0}>
-			<Text>Editing: {path.basename(filePath)}</Text>
-			<Text>Use j/k to navigate, Esc to exit</Text>
+		<Box
+			height="100%"
+			width="100%"
+			flexDirection="column"
+			borderStyle="round"
+			padding={0}
+			overflow="hidden"
+		>
 			{cursor.path && <Text color="gray">Current path: {cursor.path}</Text>}
-			<Box marginTop={1} flexDirection="column">
+			<Box
+				height="100%"
+				marginTop={1}
+				flexDirection="column"
+				justifyContent="space-between"
+			>
 				<Text>
 					<SyntaxHighlighter
 						node={jsonTree}
@@ -353,26 +374,31 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 					/>
 				</Text>
 				{search.doSearch && (
-					<Box flexDirection="column">
-						<Spacer />
-						<Box flexDirection="row">
-							<Text color="yellow" bold>
-								/{' '}
-							</Text>
-							<Text bold>
-								<TextInput
-									value={search.query}
-									onChange={search => {
-										setSearch(prev => {
-											return {
-												...prev,
-												query: search,
-											};
-										});
-									}}
-								/>
-							</Text>
-						</Box>
+					<Box
+						borderStyle="single"
+						borderColor="yellow"
+						borderLeft={false}
+						borderRight={false}
+						borderBottom={false}
+						flexDirection="row"
+					>
+						<Text color="yellow" bold>
+							{' '}
+							/{' '}
+						</Text>
+						<Text bold>
+							<TextInput
+								value={search.query}
+								onChange={search => {
+									setSearch(prev => {
+										return {
+											...prev,
+											query: search,
+										};
+									});
+								}}
+							/>
+						</Text>
 					</Box>
 				)}
 			</Box>
