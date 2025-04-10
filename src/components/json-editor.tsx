@@ -219,6 +219,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			{
 				key: Key.create('/'),
 				label: 'Search',
+				predicate: () => !search.doSearch,
 				action: () => {
 					setSearch(prev => {
 						return {
@@ -311,7 +312,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	}
 
 	return (
-		<Box flexDirection="column" padding={0}>
+		<Box height="100%" flexDirection="column" borderStyle="round" padding={0}>
 			<Text>Editing: {path.basename(filePath)}</Text>
 			<Text>Use j/k to navigate, Esc to exit</Text>
 			{cursor.path && <Text color="gray">Current path: {cursor.path}</Text>}
@@ -354,9 +355,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				{search.doSearch && (
 					<Box flexDirection="column">
 						<Spacer />
-						<Box borderStyle="round" borderColor="yellow" flexDirection="row">
+						<Box flexDirection="row">
 							<Text color="yellow" bold>
-								{' '}
 								/{' '}
 							</Text>
 							<Text bold>
