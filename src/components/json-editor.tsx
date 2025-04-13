@@ -1,7 +1,7 @@
 import Fuse from 'fuse.js';
-import {Box, Text, useInput} from 'ink';
+import {Box, measureElement, Text, useInput} from 'ink';
 import {useAtom} from 'jotai';
-import {useEffect, useMemo, useState} from 'react';
+import {DOMElement, useEffect, useMemo, useRef, useState} from 'react';
 import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
 import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
 import {
@@ -22,6 +22,7 @@ import {getJsonPointer, JSONValue} from '../jsonpath.js';
 import {logger} from '../logger.js';
 import TextInput from './input.js';
 import {SyntaxHighlighter} from './syntax-highlighter.js';
+import { useComponentHeight } from '../hooks/useComponentHeight.js';
 
 type JsonEditorProps = {
 	/**
@@ -67,6 +68,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		query: '',
 		doSearch: false,
 	});
+
+	const [scrollOffset, setScrollOffset] = useState(0);
 
 	useEffect(() => {
 		const loadFile = async () => {
@@ -295,6 +298,20 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		}
 	}, [search]);
 
+	const { ref, height } = useComponentHeight();
+
+	useEffect(() => {
+		if (!cursor.index || !navigableNodes.length || !height) return;
+
+		const cursorLine = navigableNodes[cursor.index]?.node?.loc?.start.line || 0;
+
+		if (cursorLine < scrollOffset) {
+			setScrollOffset(cursorLine);
+		} else if (cursorLine >= scrollOffset + height) {
+			setScrollOffset(cursorLine - height + 1);
+		}
+	}, [cursor.index, navigableNodes, height, scrollOffset]);
+
 	if (error) {
 		return (
 			<Box flexDirection="column" padding={1}>
@@ -332,6 +349,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			{cursor.path && <Text color="gray">Current path: {cursor.path}</Text>}
 			<Box
 				height="100%"
+				ref={ref}
 				marginTop={1}
 				flexDirection="column"
 				justifyContent="space-between"
@@ -347,7 +365,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 								: null
 						}
 						edit={focusedNode}
-						renderRange={[0, 25]}
+						renderRange={[scrollOffset, scrollOffset + height]}
 						onStringInputSubmit={(newValue: string, path: string) => {
 							logger.info({path}, 'Submitted string');
 
