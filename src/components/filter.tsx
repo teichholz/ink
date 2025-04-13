@@ -243,7 +243,7 @@ export default function Filter<T extends FilterItem>({
 								</Text>
 							))
 					) : (
-						<Text>{chalk.yellow('No matching items found')}</Text>
+						<Text color="yellow">No matching items found</Text>
 					)}
 				</Box>
 

@@ -212,7 +212,7 @@ function AppContent({tools, config}: Props) {
 	const [_, setHadFocus] = useState('filter1');
 	const [hasFocus, setHasFocus] = useState('filter1');
 
-	const focusSequence = ['filter1', 'filter2'];
+	const focusSequence = ['filter1', 'filter2', 'delta-log'];
 	const focusNextPane = () => {
 		setHadFocus(hasFocus);
 		var nextIndex =
@@ -220,6 +220,15 @@ function AppContent({tools, config}: Props) {
 		const next = focusSequence[nextIndex];
 		setHasFocus(next);
 		focus(next);
+	};
+
+	const focusPreviousPane = () => {
+		setHadFocus(hasFocus);
+		var prevIndex =
+			(focusSequence.indexOf(hasFocus) - 1 + focusSequence.length) % focusSequence.length;
+		const prev = focusSequence[prevIndex];
+		setHasFocus(prev);
+		focus(prev);
 	};
 
 	useInput((input, mod) => {
@@ -255,6 +264,14 @@ function AppContent({tools, config}: Props) {
 				action: () => {
 					logger.info('Focusing next');
 					focusNextPane();
+				},
+			},
+			{
+				key: Key.create('', ['shift', 'tab']),
+				label: 'Focus previous',
+				action: () => {
+					logger.info('Focusing previous');
+					focusPreviousPane();
 				},
 			},
 			{

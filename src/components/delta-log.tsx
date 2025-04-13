@@ -1,65 +1,24 @@
-import {Box, Text, useInput} from 'ink';
-import {useAtomValue} from 'jotai';
-import {useState} from 'react';
-import {jsonEditAtom} from '../atoms/json-editor-atoms.js';
-import {calculateDiff} from '../json-modifier.js';
-import {useEffect} from 'react';
-import {type Change} from 'diff';
-import {basename} from 'path';
+import { Box, Text } from 'ink';
+import { useAtom, useAtomValue } from 'jotai';
+import { useState, useMemo } from 'react';
+import { jsonEditAtom, removeJsonEditAtom } from '../atoms/json-editor-atoms.js';
+import { calculateDiff } from '../json-modifier.js';
+import { useEffect } from 'react';
+import { type Change } from 'diff';
+import { basename } from 'path';
 import Scrollbar from './scrollbar.js';
+import { Key, useKeybindings } from '../hooks/useKeybindings.js';
 
-type DiffDisplayProps = {
-	diff: Change[];
-};
-
-function DiffDisplay({diff}: DiffDisplayProps) {
-	return (
-		<Box flexDirection="column">
-			{diff.map((part, index) => (
-				<Text
-					key={index}
-					color={part.added ? 'green' : part.removed ? 'red' : 'gray'}
-				>
-					{part.value}
-				</Text>
-			))}
-		</Box>
-	);
-}
-
-type DeltaItemProps = {
-	path: string;
-	filePath: string;
-	originalValue: string;
-	value: string;
-	timestamp: number;
-	diff: Change[];
-};
-
-function DeltaItem({path, filePath, timestamp, diff}: DeltaItemProps) {
-	const date = new Date(timestamp);
-	const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-
-	return (
-		<Box flexDirection="column">
-			<Text bold>
-				Path: <Text color="blue">{path}</Text>
-			</Text>
-			<Text>
-				File: <Text color="yellow">{basename(filePath)}</Text>
-			</Text>
-			<Text>Time: {formattedDate}</Text>
-			<Box>
-				<DiffDisplay diff={diff} />
-			</Box>
-		</Box>
-	);
-}
+// Display modes for delta items
+export type DeltaDisplayMode = 'compact' | 'detailed' | 'diff-only';
 
 export default function DeltaLog() {
 	const edits = useAtomValue(jsonEditAtom);
+	const [, removeEdit] = useAtom(removeJsonEditAtom);
 	const [diffs, setDiffs] = useState<Map<number, Change[]>>(new Map());
 	const [scrollIndex, setScrollIndex] = useState(0);
+	const [cursorIndex, setCursorIndex] = useState(0);
+	const [displayMode, setDisplayMode] = useState<DeltaDisplayMode>('detailed');
 
 	// Calculate diffs for all edits
 	useEffect(() => {
@@ -80,18 +39,12 @@ export default function DeltaLog() {
 	// Sort edits by timestamp (newest first)
 	const sortedEdits = [...edits].sort((a, b) => b.timestamp - a.timestamp);
 
-	// Handle keyboard navigation
-	useInput((_input, key) => {
-		if (key.upArrow) {
-			if (scrollIndex > 0) {
-				setScrollIndex(scrollIndex - 1);
-			}
-		} else if (key.downArrow) {
-			if (scrollIndex < Math.max(0, sortedEdits.length - 10)) {
-				setScrollIndex(scrollIndex + 1);
-			}
+	// Clamp cursor index to valid range
+	useEffect(() => {
+		if (cursorIndex >= sortedEdits.length && sortedEdits.length > 0) {
+			setCursorIndex(sortedEdits.length - 1);
 		}
-	});
+	}, [sortedEdits.length, cursorIndex]);
 
 	// Calculate visible items based on available height
 	const visibleItems = Math.min(10, sortedEdits.length); // Assuming we can show 10 items at once
@@ -100,6 +53,67 @@ export default function DeltaLog() {
 		scrollIndex + visibleItems,
 	);
 
+	// Setup keybindings
+	const keybindings = useMemo(() => [
+		{
+			key: Key.create('j'),
+			label: 'Move cursor down',
+			action: () => {
+				if (cursorIndex < sortedEdits.length - 1) {
+					setCursorIndex(cursorIndex + 1);
+					// Auto-scroll if cursor moves out of view
+					if (cursorIndex >= scrollIndex + visibleItems - 1) {
+						setScrollIndex(Math.min(scrollIndex + 1, Math.max(0, sortedEdits.length - visibleItems)));
+					}
+				}
+			},
+			showInHelp: true,
+		},
+		{
+			key: Key.create('k'),
+			label: 'Move cursor up',
+			action: () => {
+				if (cursorIndex > 0) {
+					setCursorIndex(cursorIndex - 1);
+					// Auto-scroll if cursor moves out of view
+					if (cursorIndex < scrollIndex) {
+						setScrollIndex(Math.max(0, scrollIndex - 1));
+					}
+				}
+			},
+			showInHelp: true,
+		},
+		{
+			key: Key.create('d'),
+			label: 'Delete selected edit',
+			action: () => {
+				if (sortedEdits.length > 0) {
+					const editToRemove = sortedEdits[cursorIndex];
+					removeEdit(editToRemove);
+				}
+			},
+			showInHelp: true,
+		},
+		{
+			key: Key.create('m'),
+			label: 'Change display mode',
+			action: () => {
+				// Cycle through display modes
+				setDisplayMode(current => {
+					switch (current) {
+						case 'compact': return 'detailed';
+						case 'detailed': return 'diff-only';
+						case 'diff-only': return 'compact';
+						default: return 'detailed';
+					}
+				});
+			},
+			showInHelp: true,
+		}
+	], [cursorIndex, scrollIndex, sortedEdits, removeEdit, visibleItems]);
+
+	useKeybindings(keybindings, 'delta-log');
+
 	return (
 		<Box
 			overflow="hidden"
@@ -107,7 +121,7 @@ export default function DeltaLog() {
 			borderStyle="round"
 			width="100%"
 		>
-			<Box flexDirection="column" flexGrow={1}>
+			<Box flexDirection="column">
 				{edits.length === 0 ? (
 					<Box>
 						<Text color="gray">No edits yet</Text>
@@ -115,15 +129,14 @@ export default function DeltaLog() {
 				) : (
 					<Box flexDirection="row" flexGrow={1}>
 						<Box flexDirection="column" flexGrow={1}>
-							{visibleEdits.map(edit => (
+							{visibleEdits.map((edit, index) => (
 								<DeltaItem
 									key={edit.timestamp}
 									path={edit.path}
 									filePath={edit.filePath}
-									originalValue={edit.originalValue}
-									value={edit.value}
-									timestamp={edit.timestamp}
 									diff={diffs.get(edit.timestamp) || []}
+									isSelected={index + scrollIndex === cursorIndex}
+									displayMode={displayMode}
 								/>
 							))}
 						</Box>
@@ -136,6 +149,54 @@ export default function DeltaLog() {
 					</Box>
 				)}
 			</Box>
+		</Box>
+	);
+}
+
+type DeltaItemProps = {
+	path: string;
+	filePath: string;
+	diff: Change[];
+	isSelected?: boolean;
+	displayMode: DeltaDisplayMode;
+};
+
+function DeltaItem({ path, filePath, diff, isSelected = false, displayMode }: DeltaItemProps) {
+	return (
+		<Box
+			flexDirection="column"
+			width="100%"
+			borderLeft={isSelected}
+			borderLeftColor={isSelected ? 'blue' : undefined}
+		>
+			{(displayMode === 'detailed' || displayMode === 'diff-only') && (
+				<Box>
+					<Text>
+						{basename(filePath)}: {path}
+					</Text>
+					<Box flexDirection="row">
+						{diff.map((part, index) => (
+							<Text
+								key={index}
+								color={part.added ? 'green' : part.removed ? 'red' : 'gray'}
+							>
+								{part.value}
+							</Text>
+						))}
+					</Box>
+				</Box>
+			)}
+			{displayMode === 'compact' && (
+				<Box>
+					<Text color="gray">
+						{diff.reduce((acc, part) => {
+							if (part.added) return acc + 1;
+							if (part.removed) return acc - 1;
+							return acc;
+						}, 0)} changes
+					</Text>
+				</Box>
+			)}
 		</Box>
 	);
 }

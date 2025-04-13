@@ -82,7 +82,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				logger.error({error: err}, 'Error parsing JSON file');
 				setError(err);
 				setJsonTree(null);
-				setError(err instanceof Error ? err : new Error(String(err)));
 				return;
 			}
 
@@ -103,7 +102,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				);
 				setError(err2);
 				setJsonTree(null);
-				setError(err2 instanceof Error ? err2 : new Error(String(err2)));
 				return;
 			}
 

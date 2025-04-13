@@ -5,7 +5,10 @@
 		"target": "ES2022",
 		"jsx": "react-jsx",
 		"moduleResolution": "nodenext",
-		"noUncheckedIndexedAccess": false
+		"noUncheckedIndexedAccess": false,
+		"noUnusedLocals": false,
+		"strict": true,
+		"skipLibCheck": true
 	},
 	"include": [
 		"src"

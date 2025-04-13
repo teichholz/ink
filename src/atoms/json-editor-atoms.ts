@@ -46,3 +46,25 @@ export const addJsonEditAtom = atom(
 		set(jsonEditAtom, [...filteredChanges, change]);
 	},
 );
+
+// Atom to remove a specific edit from the history
+export const removeJsonEditAtom = atom(
+	(get) => get(jsonEditAtom),
+	(get, set, editToRemove: JsonEdit) => {
+		// Get current changes
+		const currentChanges = get(jsonEditAtom);
+
+		// Filter out the edit to remove
+		const filteredChanges = currentChanges.filter(
+			(existingEdit) =>
+				!(
+					existingEdit.path === editToRemove.path &&
+					existingEdit.filePath === editToRemove.filePath &&
+					existingEdit.timestamp === editToRemove.timestamp
+				),
+		);
+
+		// Update the atom with the filtered changes
+		set(jsonEditAtom, filteredChanges);
+	},
+);
