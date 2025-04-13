@@ -298,16 +298,19 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		}
 	}, [search]);
 
-	const { ref, height } = useComponentHeight();
+	const { ref, height } = useComponentHeight(0, 5);
 
 	useEffect(() => {
 		if (!cursor.index || !navigableNodes.length || !height) return;
+
+		logger.info({height}, "Calculating scroll offset");
 
 		const cursorLine = navigableNodes[cursor.index]?.node?.loc?.start.line || 0;
 
 		if (cursorLine < scrollOffset) {
 			setScrollOffset(cursorLine);
 		} else if (cursorLine >= scrollOffset + height) {
+			// Cursor is below visible area, scroll down
 			setScrollOffset(cursorLine - height + 1);
 		}
 	}, [cursor.index, navigableNodes, height, scrollOffset]);
@@ -350,7 +353,6 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			<Box
 				height="100%"
 				ref={ref}
-				marginTop={1}
 				flexDirection="column"
 				justifyContent="space-between"
 			>

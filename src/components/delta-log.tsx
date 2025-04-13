@@ -170,7 +170,7 @@ function DeltaItem({ path, filePath, diff, isSelected = false, displayMode }: De
 			borderLeftColor={isSelected ? 'blue' : undefined}
 		>
 			{(displayMode === 'detailed' || displayMode === 'diff-only') && (
-				<Box>
+				<Box flexDirection='column'>
 					<Text>
 						{basename(filePath)}: {path}
 					</Text>

@@ -130,8 +130,8 @@ function applyHighlighting(
 		return element;
 	};
 	const inRenderRange = (node: JsonNode): boolean =>
-		node.loc.start.line >= renderRange[0] &&
-		node.loc.end.line <= renderRange[1];
+		node.loc.start.line <= renderRange[1] &&
+		node.loc.end.line >= renderRange[0];
 
 	// options that are static for the entire tree
 	const staticOpts = {
@@ -144,19 +144,26 @@ function applyHighlighting(
 	};
 
 	if (isObjectNode(node)) {
-		if (node.properties.length === 0 && inRenderRange(node)) {
-			return syntax.OBJECT('{}');
+		// Always traverse the object, but conditionally render based on range
+		if (node.properties.length === 0) {
+			return inRenderRange(node) ? syntax.OBJECT('{}') : <Text></Text>;
 		}
 
 		const childIndent = '  '.repeat(depth + 1);
 
-		const propsInRenderRange = node.properties.map(node =>
-			inRenderRange(node.key),
+		// Check if any part of the object is in render range
+		const objectInRange = inRenderRange(node);
+		const propsInRenderRange = node.properties.map(prop =>
+			inRenderRange(prop.key) || inRenderRange(prop.value)
 		);
-		const firstPropInRenderRange = propsInRenderRange.at(0) ?? false;
-		const lastPropInRenderRange = propsInRenderRange.at(-1) ?? false;
+
+		// Only show braces if any part of the object is in range
+		const shouldShowBraces = objectInRange && propsInRenderRange.some(Boolean);
+		const firstPropInRenderRange = shouldShowBraces;
+		const lastPropInRenderRange = shouldShowBraces;
 
 		const properties = node.properties.map(prop => {
+			const propInRange = inRenderRange(prop.key) || inRenderRange(prop.value);
 			const key = applyCursorHighlight(syntax.PROPERTY(prop.key.raw), prop.key);
 			const propPath = `${path}/${prop.key.value}`;
 			const value = applyHighlighting(depth + 1, {
@@ -164,6 +171,10 @@ function applyHighlighting(
 				path: propPath,
 				...staticOpts,
 			});
+
+			if (!propInRange) {
+				return <Text></Text>;
+			}
 
 			return (
 				<React.Fragment key={prop.key.value}>
@@ -190,14 +201,14 @@ function applyHighlighting(
 		);
 
 		const propOrEmpty = (prop: ReactNode, i: number) => {
-			if (!propsInRenderRange.at(i)) {
+			if (!propsInRenderRange[i]) {
 				return <Text></Text>;
 			}
 
 			return (
 				<React.Fragment key={i}>
 					{prop}
-					{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
+					{i < node.properties.length - 1 && propsInRenderRange[i+1] && <Text>,{'\n'}</Text>}
 					{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
 				</React.Fragment>
 			);
@@ -213,11 +224,19 @@ function applyHighlighting(
 	}
 
 	if (isArrayNode(node)) {
-		if (node.elements.length === 0 && inRenderRange(node)) {
-			return syntax.ARRAY('[]');
+		// Always traverse the array, but conditionally render based on range
+		if (node.elements.length === 0) {
+			return inRenderRange(node) ? syntax.ARRAY('[]') : <Text></Text>;
 		}
 
 		const childIndent = '  '.repeat(depth + 1);
+
+		// Check if any part of the array is in render range
+		const arrayInRange = inRenderRange(node);
+		const elementsInRenderRange = node.elements.map(elem => inRenderRange(elem));
+
+		// Only show brackets if any part of the array is in range
+		const shouldShowBrackets = arrayInRange && elementsInRenderRange.some(Boolean);
 
 		const elements = node.elements.map((elem, index) => {
 			const elemPath = `${path}/${index}`;
@@ -239,25 +258,32 @@ function applyHighlighting(
 			);
 		});
 
-		const openBracket = syntax.ARRAY('[\n');
-		const closeBracket = syntax.ARRAY(']');
+		const openBracket = shouldShowBrackets ? syntax.ARRAY('[\n') : <Text></Text>;
+		const closeBracket = shouldShowBrackets ? syntax.ARRAY(']') : <Text></Text>;
 
 		return (
 			<React.Fragment>
 				{openBracket}
-				{elements.map((elem, i) => (
-					<React.Fragment key={i}>
-						{elem}
-						{i < node.elements.length - 1 && <Text>,{'\n'}</Text>}
-						{i === node.elements.length - 1 && <Text>{'\n'}</Text>}
-					</React.Fragment>
-				))}
-				<Text>{indent}</Text>
+				{elements.map((elem, i) => {
+					if (!elementsInRenderRange[i]) {
+						return <Text></Text>;
+					}
+
+					return (
+						<React.Fragment key={i}>
+							{elem}
+							{i < node.elements.length - 1 && elementsInRenderRange[i+1] && <Text>,{'\n'}</Text>}
+							{i === node.elements.length - 1 && <Text>{'\n'}</Text>}
+						</React.Fragment>
+					);
+				})}
+				{shouldShowBrackets && <Text>{indent}</Text>}
 				{closeBracket}
 			</React.Fragment>
 		);
 	}
 
+	// For primitive nodes, always traverse but conditionally render
 	if (!inRenderRange(node)) {
 		return <Text></Text>;
 	}
