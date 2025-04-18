@@ -1,4 +1,9 @@
-import { atom } from "jotai";
+import { atom, getDefaultStore } from "jotai";
+import { updateJsonNode } from "../json-tree/json-util.js";
+import type { JsonNode } from "../json-tree/parse-json.js";
+import { logger } from "../logger.js";
+
+const defaultStore = getDefaultStore();
 
 // Define the type for string changes
 export type JsonEdit = {
@@ -66,5 +71,42 @@ export const removeJsonEditAtom = atom(
 
 		// Update the atom with the filtered changes
 		set(jsonEditAtom, filteredChanges);
+
+		// Remove the edit from the JsonNode
+		const { path, value } = editToRemove;
+		const jsonNode = defaultStore.get(jsonTreesAtom).get(path)?.cached;
+
+		if (jsonNode) {
+			try {
+				const newNode = updateJsonNode(jsonNode, path, value);
+				defaultStore.get(jsonTreesAtom).set(path, { cached: newNode });
+			} catch (error) {
+				logger.error({ error }, "Error updating JSON node");
+			}
+		}
+	},
+);
+
+export type CachedJsonNode = {
+	cached: JsonNode;
+};
+
+export const jsonTreesAtom = atom<Map<string, CachedJsonNode>>(new Map());
+
+export const addJsonTreeAtom = atom(
+	(get) => get(jsonTreesAtom),
+	(get, set, { path, cached }: { path: string; cached: JsonNode }) => {
+		const trees = get(jsonTreesAtom);
+		trees.set(path, { cached });
+		set(jsonTreesAtom, trees);
+	},
+);
+
+export const removeJsonTreeAtom = atom(
+	(get) => get(jsonTreesAtom),
+	(get, set, path: string) => {
+		const trees = get(jsonTreesAtom);
+		trees.delete(path);
+		set(jsonTreesAtom, trees);
 	},
 );

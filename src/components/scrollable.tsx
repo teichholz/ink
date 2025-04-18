@@ -140,7 +140,7 @@ export default function Scrollable<T extends FilterItem>({
 							</Box>
 						))
 				) : (
-					<Text>No items to display</Text>
+					<Text color="gray">No items</Text>
 				)}
 			</Box>
 

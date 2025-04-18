@@ -55,7 +55,6 @@ type Search = {
 };
 
 export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
-	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [navigableNodes, setNavigableNodes] = useState<NavigableNode[]>([]);
@@ -93,9 +92,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 				return;
 			}
 
-			const [parsedJson, originalJson] = parsed;
-
-			setOriginalJson(originalJson);
+			const [parsedJson] = parsed;
 
 			// Format the JSON without syntax highlighting
 			const formattedContent = stringify(parsedJson);
