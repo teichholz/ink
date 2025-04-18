@@ -1,6 +1,6 @@
 import { compile } from "jsonpointer";
 import { logger } from "./logger.js";
-import { Res, type Result } from "./types.js";
+import { Result } from "./types.js";
 
 export type JSONValue =
 	| string
@@ -43,11 +43,11 @@ export function modifyJsonPointer<T extends JSONValue>(
 	pointer: string,
 ): Result<T, Error> {
 	if (!pointer || pointer === "") {
-		return Res.ok(update as T);
+		return Result.ok(update as T);
 	}
 
 	const { set } = compile(pointer);
 	set(json as any, update);
 
-	return Res.ok(json);
+	return Result.ok(json);
 }

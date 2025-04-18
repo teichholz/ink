@@ -11,7 +11,7 @@ import type { Config } from "./config.js";
 import { getJsonPointer } from "./jsonpath.js";
 import { logger } from "./logger.js";
 import { findPathTools } from "./os.js";
-import { Res, type Result } from "./types.js";
+import { Result } from "./types.js";
 
 export interface Tools {
 	rg: string;
@@ -22,10 +22,10 @@ export async function getTools(): Promise<Result<Tools, Error>> {
 	const { findPath, fdPath, rgPath } = await findPathTools();
 
 	if (!findPath || !fdPath) {
-		return Res.err(new Error("Could not find find or fd executables"));
+		return Result.err(new Error("Could not find find or fd executables"));
 	}
 
-	return Res.ok({ rg: rgPath || installedRgPath, fd: fdPath || findPath });
+	return Result.ok({ rg: rgPath || installedRgPath, fd: fdPath || findPath });
 }
 
 class Labels extends Map<string, unknown> {
@@ -57,7 +57,7 @@ export async function extractLabelsFromFile(
 		logger.debug(`Extracted labels: ${JSON.stringify(root)}`);
 
 		if (!root) {
-			return Res.err(
+			return Result.err(
 				new Error("Invalid json path: Path must point to a single object"),
 			);
 		}
@@ -70,9 +70,9 @@ export async function extractLabelsFromFile(
 			m.set(key, value);
 		}
 
-		return Res.ok(m);
+		return Result.ok(m);
 	} catch (error) {
-		return Res.err(error as Error);
+		return Result.err(error as Error);
 	}
 }
 

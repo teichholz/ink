@@ -8,7 +8,7 @@ import type {
 } from "acorn";
 import { type ExpressionStatement, parse } from "acorn";
 import type { JSONValue } from "../jsonpath.js";
-import { Res, type Result } from "../types.js";
+import { Result } from "../types.js";
 
 /**
  * Position information for a node in the JSON AST
@@ -158,12 +158,12 @@ export async function parseJsonFile(
 		const [jsonNode, err] = parseJson(fileContent);
 
 		if (err) {
-			return Res.err(err);
+			return Result.err(err);
 		}
 
-		return Res.ok([jsonNode, JSON.parse(fileContent)]);
+		return Result.ok([jsonNode, JSON.parse(fileContent)]);
 	} catch (error) {
-		return Res.err(error as Error);
+		return Result.err(error as Error);
 	}
 }
 
@@ -186,9 +186,9 @@ export function parseJson(json: string): Result<JsonNode, Error> {
 		// Extract the object literal
 		const jsonNode = (ast.body[0] as ExpressionStatement).expression;
 
-		return Res.ok(transformAcornAst(jsonNode));
+		return Result.ok(transformAcornAst(jsonNode));
 	} catch (error) {
-		return Res.err(error as Error);
+		return Result.err(error as Error);
 	}
 }
 
