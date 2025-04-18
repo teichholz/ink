@@ -11,7 +11,7 @@ import { type FilterItem } from './filter.js';
 import { Key, useKeybindings } from '../hooks/useKeybindings.js';
 import chalk from 'chalk';
 
-export type DeltaDisplayMode = 'compact' | 'detailed' | 'diff-only';
+export type DeltaDisplayMode = 'detailed' | 'file-changes';
 
 type DeltaItemAdapter = FilterItem & {
 	path: string;
@@ -106,9 +106,8 @@ export default function DeltaLog() {
 				// Cycle through display modes
 				setDisplayMode(current => {
 					switch (current) {
-						case 'compact': return 'detailed';
-						case 'detailed': return 'diff-only';
-						case 'diff-only': return 'compact';
+						case 'detailed': return 'file-changes';
+						case 'file-changes': return 'detailed';
 						default: return 'detailed';
 					}
 				});
@@ -144,6 +143,7 @@ export default function DeltaLog() {
 			) : (
 				<Scrollable
 					id="delta-log"
+					key={displayMode}
 					items={adaptedEdits}
 					selectedIndex={cursorIndex}
 					ItemComponent={DeltaItemComponent}
@@ -172,7 +172,7 @@ function DeltaItem({ path, filePath, diff, isSelected = false, displayMode }: De
 			borderStyle="round"
 			borderLeftColor={isSelected ? 'blue' : 'hidden'}
 		>
-			{(displayMode === 'detailed' || displayMode === 'diff-only') && (
+			{(displayMode === 'detailed' || displayMode === 'file-changes') && (
 				<Box flexDirection='column'>
 					<Text>
 						{basename(filePath)}: {path}
@@ -187,13 +187,6 @@ function DeltaItem({ path, filePath, diff, isSelected = false, displayMode }: De
 							</Text>
 						))}
 					</Box>
-				</Box>
-			)}
-			{displayMode === 'compact' && (
-				<Box flexDirection='row'>
-					<Text>{chalk.green(diff.filter(part => part.added).length)} Added</Text>
-					<Text>{' '}</Text>
-					<Text>{chalk.red(diff.filter(part => part.removed).length)} Removed</Text>
 				</Box>
 			)}
 		</Box>

@@ -41,6 +41,11 @@ type ScrollableProps<T extends FilterItem> = {
 	id: string;
 
 	/**
+	 * Unique key for the component. Used to force rerendering.
+	*/
+	key?: string;
+
+	/**
 	 * Array of items to display in the scrollable list
 	 */
 	items: T[];
