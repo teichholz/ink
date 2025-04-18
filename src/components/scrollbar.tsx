@@ -1,6 +1,6 @@
-import chalk, {ColorName} from 'chalk';
+import chalk, { ColorName } from 'chalk';
 import figures from 'figures';
-import {Box, Text} from 'ink';
+import { Box, Text } from 'ink';
 
 // chalk type is a little restrictive, so we loosen it up here and ensure that the passed in properties are valid
 declare module 'chalk' {
@@ -11,17 +11,17 @@ declare module 'chalk' {
 
 type ScrollbarProps = {
 	/**
-	 * Total number of items
+	 * Total number of items or total height
 	 */
 	totalItems: number;
 
 	/**
-	 * Number of items that can be displayed at once
+	 * Number of items that can be displayed at once or visible height
 	 */
 	visibleItems: number;
 
 	/**
-	 * Current scroll position (index of the first visible item)
+	 * Current scroll position (index of the first visible item or scroll offset)
 	 */
 	scrollOffset: number;
 
@@ -49,6 +49,11 @@ type ScrollbarProps = {
 	 * Color of the scrollbar track
 	 */
 	trackColor?: ColorName;
+
+	/**
+	 * Whether to use percentage-based scrolling (for variable height items)
+	 */
+	usePercentage?: boolean;
 };
 
 export default function Scrollbar({
@@ -60,6 +65,7 @@ export default function Scrollbar({
 	trackChar = 'lineVertical',
 	thumbColor = 'blue',
 	trackColor = 'gray',
+	usePercentage = false,
 }: ScrollbarProps) {
 	// Only show scrollbar if we have more items than can be displayed
 	if (totalItems <= visibleItems) {
@@ -72,8 +78,16 @@ export default function Scrollbar({
 		Math.floor((visibleItems * visibleItems) / totalItems),
 	);
 
-	const maxScrollOffset = Math.max(0, totalItems - visibleItems);
-	const scrollRatio = maxScrollOffset > 0 ? scrollOffset / maxScrollOffset : 0;
+	let scrollRatio;
+
+	if (usePercentage) {
+		// For variable height items, scrollOffset is already a percentage or absolute position
+		scrollRatio = Math.min(1, Math.max(0, scrollOffset / (totalItems - visibleItems)));
+	} else {
+		// For fixed height items, calculate ratio based on item indices
+		const maxScrollOffset = Math.max(0, totalItems - visibleItems);
+		scrollRatio = maxScrollOffset > 0 ? scrollOffset / maxScrollOffset : 0;
+	}
 
 	const scrollbarStart = Math.floor(
 		scrollRatio * (visibleItems - scrollbarHeight),
@@ -81,7 +95,7 @@ export default function Scrollbar({
 
 	return (
 		<Box flexDirection="column" width={width} marginLeft={1}>
-			{Array.from({length: visibleItems}).map((_, index) => {
+			{Array.from({ length: visibleItems }).map((_, index) => {
 				const isScrollbarElement =
 					index >= scrollbarStart && index < scrollbarStart + scrollbarHeight;
 

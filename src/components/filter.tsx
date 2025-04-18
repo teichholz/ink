@@ -1,13 +1,13 @@
 import chalk from 'chalk';
-import type {IFuseOptions} from 'fuse.js';
+import type { IFuseOptions } from 'fuse.js';
 import Fuse from 'fuse.js';
-import {Box, DOMElement, measureElement, Text} from 'ink';
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import type {Simplify} from 'type-fest';
-import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
+import { Box, DOMElement, measureElement, Text, useInput } from 'ink';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Simplify } from 'type-fest';
+import { Key, Keybinding, useKeybindings } from '../hooks/useKeybindings.js';
 import TextInput from './input.js';
-import {logger} from '../logger.js';
-import Scrollbar from './scrollbar.js';
+import { logger } from '../logger.js';
+import Scrollable from './scrollable.js';
 
 export type FilterItem = {
 	id: string;
@@ -75,11 +75,11 @@ export default function Filter<T extends FilterItem>({
 	id,
 	items,
 	placeholder,
-	transform = item => item.name,
-	prefix = '',
-	suffix = '',
 	outerBox,
 	filterOptions,
+	prefix,
+	suffix,
+	transform,
 	onFilterChange,
 	onSelectionChange,
 	onSelect,
@@ -87,16 +87,6 @@ export default function Filter<T extends FilterItem>({
 	const ref = useRef<DOMElement>(null);
 	const [text, setText] = useState('');
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [scrollOffset, setScrollOffset] = useState(0);
-	const [availableHeight, setAvailableHeight] = useState(0);
-
-	// Calculate available height for items (accounting for input and borders)
-	useEffect(() => {
-		if (ref.current) {
-			const {height} = measureElement(ref.current);
-			setAvailableHeight(height - 5);
-		}
-	}, []);
 
 	// Initialize Fuse instance with default options focused on name property
 	const fuse = useMemo(() => {
@@ -121,14 +111,14 @@ export default function Filter<T extends FilterItem>({
 		if (onFilterChange) {
 			// Debounce the filter change notification to reduce flickering
 			const timeoutId = setTimeout(() => {
-				logger.info({filteredItems}, 'Filter changed');
+				logger.info({ filteredItems }, 'Filter changed');
 				onFilterChange(filteredItems, text.length > 0);
 			}, 100);
 
 			return () => clearTimeout(timeoutId);
 		}
 
-		return () => {};
+		return () => { };
 	}, [filteredItems]);
 
 	// Reset selected index when filtered items change
@@ -174,7 +164,7 @@ export default function Filter<T extends FilterItem>({
 		[filteredItems, selectedIndex],
 	);
 
-	const {isFocused} = useKeybindings(keybindings, id);
+	const { isFocused } = useKeybindings(keybindings, id);
 
 	// notify app that an item has changed
 	useEffect(() => {
@@ -184,16 +174,6 @@ export default function Filter<T extends FilterItem>({
 		}
 	}, [selectedIndex, filteredItems, isFocused]);
 
-	// scroll bar logic
-	useEffect(() => {
-		if (selectedIndex < scrollOffset) {
-			// Scroll up if selected item is above visible area
-			setScrollOffset(selectedIndex);
-		} else if (selectedIndex >= scrollOffset + availableHeight) {
-			// Scroll down if selected item is below visible area
-			setScrollOffset(selectedIndex - availableHeight + 1);
-		}
-	}, [selectedIndex, scrollOffset, availableHeight]);
 
 	return (
 		<Box
@@ -228,31 +208,14 @@ export default function Filter<T extends FilterItem>({
 					</Text>
 				</Box>
 			</Box>
-			<Box flexDirection="row">
-				<Box flexDirection="column" flexGrow={1}>
-					{filteredItems.length > 0 ? (
-						filteredItems
-							.slice(scrollOffset, scrollOffset + availableHeight)
-							.map((item, index) => (
-								<Text key={item.id}>
-									{typeof prefix === 'string' ? prefix : prefix(item)}
-									{index + scrollOffset === selectedIndex
-										? chalk.underline(transform(item))
-										: transform(item)}
-									{typeof suffix === 'string' ? suffix : suffix(item)}
-								</Text>
-							))
-					) : (
-						<Text color="yellow">No matching items found</Text>
-					)}
-				</Box>
 
-				<Scrollbar
-					totalItems={filteredItems.length}
-					visibleItems={availableHeight}
-					scrollOffset={scrollOffset}
-				/>
-			</Box>
+			<Scrollable
+				id="filter-scrollable"
+				items={filteredItems}
+				selectedIndex={selectedIndex}
+				onSelectionChange={onSelectionChange}
+				itemComponentOverride={{ prefix, suffix, transform }}
+			/>
 		</Box>
 	);
 }

@@ -1,7 +1,7 @@
 import chalk from 'chalk';
-import {Key as InkKey, useFocus, useInput} from 'ink';
-import {atom, useAtom} from 'jotai';
-import {useCallback, useEffect} from 'react';
+import { Key as InkKey, useFocus, useInput } from 'ink';
+import { atom, useAtom } from 'jotai';
+import { useCallback, useEffect } from 'react';
 
 export namespace Key {
 	/**
@@ -11,11 +11,11 @@ export namespace Key {
 		key: LetterKey,
 		modifiers: ModifierKey[] = [],
 	): KeyCombo {
-		return {key, modifiers};
+		return { key, modifiers };
 	}
 
 	export function modifier(mod: ModifierKey): KeyCombo {
-		return {key: '', modifiers: [mod]};
+		return { key: '', modifiers: [mod] };
 	}
 }
 
@@ -127,7 +127,7 @@ export function useKeybindings(
 	global = false,
 ) {
 	const local = !global;
-	const {isFocused} = local ? useFocus({id}) : {isFocused: true};
+	const { isFocused } = local ? useFocus({ id }) : { isFocused: true };
 
 	// defaults
 	keybindings.forEach(binding => {
@@ -150,7 +150,7 @@ export function useKeybindings(
 				continue;
 			}
 
-			const {mainKey: letterKey, modifiers} = normalizeKeyBinding(binding.key);
+			const { mainKey: letterKey, modifiers } = normalizeKeyBinding(binding.key);
 
 			const modifiersMatch = modifiers.every(modifier => key[modifier]);
 			if (!modifiersMatch) {
@@ -176,6 +176,7 @@ export function useKeybindings(
 	const getKeybindingsHelp = useCallback(() => {
 		return keybindings
 			.filter(binding => binding.predicate?.())
+			.filter(binding => binding.showInHelp)
 			.map(formatKeyBinding)
 			.filter(Boolean)
 			.join('  ');
@@ -224,7 +225,7 @@ function normalizeKeyBinding(keyBinding: KeyCombo): {
  * Format a key binding for display
  */
 export function formatKeyBinding(keybinding: Keybinding): string {
-	const {mainKey, modifiers} = normalizeKeyBinding(keybinding.key);
+	const { mainKey, modifiers } = normalizeKeyBinding(keybinding.key);
 
 	const formattedModifiers = modifiers.map(mod => {
 		switch (mod) {

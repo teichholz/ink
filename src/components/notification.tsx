@@ -1,14 +1,16 @@
 import chalk from 'chalk';
-import {Box, Text, useInput} from 'ink';
-import {useState} from 'react';
-import {LiteralUnion} from 'type-fest';
-import {useStdoutDimensions} from '../hooks/useStdoutDimensions.js';
+import { Box, Text, useInput } from 'ink';
+import { useState } from 'react';
+import { LiteralUnion } from 'type-fest';
+import { useStdoutDimensions } from '../hooks/useStdoutDimensions.js';
+import { atom, useAtom } from 'jotai';
 
 export type NotificationProps = {
 	title?: string;
 	message: string;
 	size?: LiteralUnion<'1/2' | '2/3' | '3/4', string>;
 	style?: 'info' | 'warning';
+	transparent?: boolean;
 	onDismiss?: () => void;
 };
 
@@ -19,8 +21,9 @@ export type NotificationProps = {
 export function Notification({
 	title = '',
 	message,
-	onDismiss = () => {},
+	onDismiss = () => { },
 	size = '1/2',
+	transparent = false,
 	style = 'info',
 }: NotificationProps) {
 	const [cols, rows] = useStdoutDimensions();
@@ -50,15 +53,17 @@ export function Notification({
 
 	return (
 		<>
-			<Box
-				position="absolute"
-				marginLeft={left}
-				marginTop={top}
-				width={notificationWidth}
-				height={notificationHeight}
-			>
-				<Text>{' '.repeat(notificationHeight * notificationWidth)}</Text>
-			</Box>
+			{!transparent &&
+				<Box
+					position="absolute"
+					marginLeft={left}
+					marginTop={top}
+					width={notificationWidth}
+					height={notificationHeight}
+				>
+					<Text>{' '.repeat(notificationHeight * notificationWidth)}</Text>
+				</Box>
+			}
 			<Box
 				position="absolute"
 				marginLeft={left}
@@ -84,14 +89,14 @@ export function Notification({
 	);
 }
 
+const notificationAtom = atom<NotificationProps | null>(null);
+
 /**
  * Hook to manage notifications
  * @returns Functions and state to manage notifications
  */
 export function useNotification() {
-	const [notification, setNotification] = useState<NotificationProps | null>(
-		null,
-	);
+	const [notification, setNotification] = useAtom(notificationAtom);
 
 	const showNotification = (props: NotificationProps) => {
 		setNotification({

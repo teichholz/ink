@@ -1,7 +1,7 @@
-import {ForegroundColorName} from 'chalk';
-import {Text} from 'ink';
-import React, {ReactNode} from 'react';
-import {LiteralUnion} from 'type-fest';
+import { ForegroundColorName } from 'chalk';
+import { Text } from 'ink';
+import React, { ReactNode } from 'react';
+import { LiteralUnion } from 'type-fest';
 import {
 	type JsonNode,
 	isArrayNode,
@@ -11,7 +11,7 @@ import {
 	isObjectNode,
 	isStringNode,
 } from '../json-tree/parse-json.js';
-import {UncontrolledTextInput, UncontrolledTextInputProps} from './input.js';
+import { UncontrolledTextInput, UncontrolledTextInputProps } from './input.js';
 
 const DefaultHighlighting = {
 	ARRAY: ColoredText('gray'),
@@ -63,7 +63,7 @@ export type SyntaxHighlightOptions = {
 	edit?: JsonNode | null;
 
 	/**
-	 * Range of lines to render
+	 * Range of lines to render. Inclusive.
 	 */
 	renderRange?: [number, number];
 
@@ -89,8 +89,8 @@ export function SyntaxHighlighter({
 	cursor = null,
 	edit = null,
 	renderRange = [0, Infinity],
-	onStringInputChange = () => {},
-	onStringInputSubmit = () => {},
+	onStringInputChange = () => { },
+	onStringInputSubmit = () => { },
 }: SyntaxHighlightOptions): ReactNode {
 	const result = applyHighlighting(0, {
 		node,
@@ -116,7 +116,7 @@ function applyHighlighting(
 		renderRange,
 		onStringInputChange,
 		onStringInputSubmit,
-	}: Required<SyntaxHighlightOptions> & {path?: string},
+	}: Required<SyntaxHighlightOptions> & { path?: string },
 ): ReactNode {
 	const indent = '  '.repeat(depth);
 	const applyCursorHighlight = (element: ReactNode, node: JsonNode) => {
@@ -208,7 +208,7 @@ function applyHighlighting(
 			return (
 				<React.Fragment key={i}>
 					{prop}
-					{i < node.properties.length - 1 && propsInRenderRange[i+1] && <Text>,{'\n'}</Text>}
+					{i < node.properties.length - 1 && <Text>,{'\n'}</Text>}
 					{i === node.properties.length - 1 && <Text>{'\n'}</Text>}
 				</React.Fragment>
 			);
@@ -272,7 +272,7 @@ function applyHighlighting(
 					return (
 						<React.Fragment key={i}>
 							{elem}
-							{i < node.elements.length - 1 && elementsInRenderRange[i+1] && <Text>,{'\n'}</Text>}
+							{i < node.elements.length - 1 && elementsInRenderRange[i + 1] && <Text>,{'\n'}</Text>}
 							{i === node.elements.length - 1 && <Text>{'\n'}</Text>}
 						</React.Fragment>
 					);

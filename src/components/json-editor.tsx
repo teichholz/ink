@@ -1,9 +1,10 @@
 import Fuse from 'fuse.js';
-import {Box, measureElement, Text, useInput} from 'ink';
-import {useAtom} from 'jotai';
-import {DOMElement, useEffect, useMemo, useRef, useState} from 'react';
-import {addJsonEditAtom} from '../atoms/json-editor-atoms.js';
-import {Key, Keybinding, useKeybindings} from '../hooks/useKeybindings.js';
+import { Box, Text, useFocusManager, useInput } from 'ink';
+import { useAtom } from 'jotai';
+import { useEffect, useMemo, useState } from 'react';
+import { addJsonEditAtom } from '../atoms/json-editor-atoms.js';
+import { useComponentHeight } from '../hooks/useComponentHeight.js';
+import { Key, Keybinding, useKeybindings } from '../hooks/useKeybindings.js';
 import {
 	getNavigableNodes,
 	isPrimitive,
@@ -17,12 +18,13 @@ import {
 	parseJson,
 	parseJsonFile,
 } from '../json-tree/parse-json.js';
-import {stringify} from '../json-tree/syntax-highlight.js';
-import {getJsonPointer, JSONValue} from '../jsonpath.js';
-import {logger} from '../logger.js';
+import { stringify } from '../json-tree/syntax-highlight.js';
+import { getJsonPointer, JSONValue } from '../jsonpath.js';
+import { logger } from '../logger.js';
 import TextInput from './input.js';
-import {SyntaxHighlighter} from './syntax-highlighter.js';
-import { useComponentHeight } from '../hooks/useComponentHeight.js';
+import { SyntaxHighlighter } from './syntax-highlighter.js';
+import { useNotification } from './notification.js';
+import { MathUtils } from '../math.js';
 
 type JsonEditorProps = {
 	/**
@@ -52,7 +54,7 @@ type Search = {
 	doSearch: boolean;
 };
 
-export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
+export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 	const [originalJson, setOriginalJson] = useState<JSONValue | null>(null);
 	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
@@ -71,6 +73,9 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 	const [scrollOffset, setScrollOffset] = useState(0);
 
+	const [debug, setDebug] = useState(false);
+	const { showNotification } = useNotification();
+
 	useEffect(() => {
 		const loadFile = async () => {
 			if (!filePath) {
@@ -82,7 +87,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			const [parsed, err] = await parseJsonFile(filePath);
 
 			if (err) {
-				logger.error({error: err}, 'Error parsing JSON file');
+				logger.error({ error: err }, 'Error parsing JSON file');
 				setError(err);
 				setJsonTree(null);
 				return;
@@ -100,7 +105,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 
 			if (err2) {
 				logger.error(
-					{error: err2, content: formattedContent},
+					{ error: err2, content: formattedContent },
 					'Error parsing stringified JSON',
 				);
 				setError(err2);
@@ -113,7 +118,8 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			setJsonTree(json as JsonValueNode);
 			const navigable = getNavigableNodes(json);
 			setNavigableNodes(navigable);
-			setCursor({path: '/', index: 0, node: navigable[0].node});
+			setCursor({ path: navigable[0]?.path || '/', index: 0, node: navigable[0]?.node });
+			setScrollOffset(navigable[0]?.node?.loc?.start.line || 0);
 			setError(null);
 		};
 
@@ -158,31 +164,26 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 			{
 				key: Key.create('j'),
 				label: 'Move cursor down',
-				action: () => {
-					logger.info({path: cursor.path}, 'Moving cursor down');
-					setCursor(prev => {
-						const next = ((prev.index ?? 0) + 1) % navigableNodes.length;
-						const nextNode = navigableNodes[next];
-						return {index: next, node: nextNode.node, path: nextNode.path};
-					});
-				},
-				showInHelp: true,
+				action: () => moveCursor(1),
+				showInHelp: false,
 			},
 			{
 				key: Key.create('k'),
 				label: 'Move cursor up',
-				action: () => {
-					logger.info({path: cursor.path}, 'Moving cursor up');
-					setCursor(prev => {
-						let next = (prev.index ?? 0) - 1;
-						if (next < 0) {
-							next = navigableNodes.length - 1;
-						}
-						const nextNode = navigableNodes[next];
-						return {index: next, node: nextNode.node, path: nextNode.path};
-					});
-				},
-				showInHelp: true,
+				action: () => moveCursor(-1),
+				showInHelp: false,
+			},
+			{
+				key: Key.create('d', ['ctrl']),
+				showInHelp: false,
+				action: () => moveCursor(5),
+				label: 'Jump down',
+			},
+			{
+				key: Key.create('u', ['ctrl']),
+				showInHelp: false,
+				action: () => moveCursor(-5),
+				label: 'Jump up',
 			},
 			{
 				key: Key.create('r'),
@@ -266,16 +267,45 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 				},
 				showInHelp: true,
 			},
+			{
+				key: Key.create('h', ['ctrl']),
+				label: 'Show debug info',
+				showInHelp: false,
+				action: () => {
+					setDebug(prev => !prev);
+				},
+			}
 		],
 		[cursor, navigableNodes, search],
 	);
 
-	useInput((_, mod) => {
-		if (mod.escape) {
+	function moveCursor(lines: number) {
+		setCursor(prev => {
+			const next = MathUtils.mod((prev.index ?? 0) + lines, navigableNodes.length);
+			const nextNode = navigableNodes[next];
+			return { index: next, node: nextNode.node, path: nextNode.path };
+		});
+	}
+
+	useKeybindings(keybindings, id);
+
+	useEffect(() => {
+		if (!debug) {
 			return;
 		}
-	});
-	useKeybindings(keybindings, id);
+
+		logger.info('Showing debug info');
+
+		const debugInfo = {
+			cursor,
+		};
+		showNotification({
+			title: 'Debug info',
+			message: JSON.stringify(debugInfo, null, 2),
+			transparent: true,
+			size: '3/4'
+		});
+	}, [debug, cursor]);
 
 	useEffect(() => {
 		if (!search.query || !search.doSearch) {
@@ -285,7 +315,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 		try {
 			const searched = fuse.search(search.query);
 			const winner = searched[0]?.item;
-			logger.info({query: search.query, winner, searched}, 'Search result');
+			logger.info({ query: search.query, winner, searched }, 'Search result');
 			setCursor(prev => {
 				return {
 					...prev,
@@ -301,19 +331,19 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 	const { ref, height } = useComponentHeight(0, 5);
 
 	useEffect(() => {
-		if (!cursor.index || !navigableNodes.length || !height) return;
+		if (!cursor.node || !height) return;
 
-		logger.info({height}, "Calculating scroll offset");
 
-		const cursorLine = navigableNodes[cursor.index]?.node?.loc?.start.line || 0;
+		const cursorLine = cursor.node?.loc?.start.line || 0;
 
 		if (cursorLine < scrollOffset) {
 			setScrollOffset(cursorLine);
+			logger.info({ height, cursorLine, scrollOffset: cursorLine }, 'Calculated scroll offset');
 		} else if (cursorLine >= scrollOffset + height) {
-			// Cursor is below visible area, scroll down
 			setScrollOffset(cursorLine - height + 1);
+			logger.info({ height, cursorLine, scrollOffset: cursorLine - height + 1 }, 'Calculated scroll offset');
 		}
-	}, [cursor.index, navigableNodes, height, scrollOffset]);
+	}, [cursor, height]);
 
 	if (error) {
 		return (
@@ -369,7 +399,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 						edit={focusedNode}
 						renderRange={[scrollOffset, scrollOffset + height]}
 						onStringInputSubmit={(newValue: string, path: string) => {
-							logger.info({path}, 'Submitted string');
+							logger.info({ path }, 'Submitted string');
 
 							if (!focusedNode) {
 								return;
@@ -387,7 +417,7 @@ export function JsonEditor({id, filePath, onExit}: JsonEditorProps) {
 									filePath: filePath,
 								});
 								logger.info(
-									{path, value: newValue, filePath},
+									{ path, value: newValue, filePath },
 									'Saved string change',
 								);
 							}

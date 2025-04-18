@@ -24,11 +24,17 @@ export type NavigableNode = {
 	 * json pointer path to the node
 	 */
 	path: string;
+
+	parent?: JsonNode;
 };
 
-export function getNavigableNodes(node: JsonNode, path = ""): NavigableNode[] {
+export function getNavigableNodes(
+	node: JsonNode,
+	path = "",
+	parent?: JsonNode,
+): NavigableNode[] {
 	if (isPrimitive(node)) {
-		return [{ node, path }];
+		return [{ node, path, parent }];
 	}
 
 	const result: NavigableNode[] = [];
@@ -37,9 +43,9 @@ export function getNavigableNodes(node: JsonNode, path = ""): NavigableNode[] {
 		for (const prop of node.properties) {
 			const propPath = `${path}/${prop.key.value}`;
 			if (!isPrimitive(prop.value)) {
-				result.push(...getNavigableNodes(prop.value, propPath));
+				result.push(...getNavigableNodes(prop.value, propPath, node));
 			} else {
-				result.push({ node: prop, path: propPath });
+				result.push({ node: prop, path: propPath, parent: node });
 			}
 		}
 	} else if (isArrayNode(node)) {
@@ -47,9 +53,9 @@ export function getNavigableNodes(node: JsonNode, path = ""): NavigableNode[] {
 			const elem = node.elements[i];
 			const elemPath = `${path}/${i}`;
 			if (isPrimitive(elem)) {
-				result.push({ node: elem, path: elemPath });
+				result.push({ node: elem, path: elemPath, parent: node });
 			} else {
-				result.push(...getNavigableNodes(elem, elemPath));
+				result.push(...getNavigableNodes(elem, elemPath, node));
 			}
 		}
 	}

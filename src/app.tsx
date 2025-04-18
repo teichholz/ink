@@ -1,12 +1,12 @@
 import chalk from 'chalk';
-import {Box, Text, useFocusManager, useInput} from 'ink';
-import {useAtom} from 'jotai';
-import {useEffect, useMemo, useState} from 'react';
-import Filter, {FilterItem} from './components/filter.js';
-import {JsonEditor} from './components/json-editor.js';
-import {useNotification} from './components/notification.js';
-import {FilePreview, LabelPreview} from './components/preview.js';
-import {Config} from './config.js';
+import { Box, Text, useFocusManager, useInput } from 'ink';
+import { useAtom } from 'jotai';
+import { useEffect, useMemo, useState } from 'react';
+import Filter, { FilterItem } from './components/filter.js';
+import { JsonEditor } from './components/json-editor.js';
+import { useNotification } from './components/notification.js';
+import { FilePreview, LabelPreview } from './components/preview.js';
+import { Config } from './config.js';
 import {
 	Key,
 	currentFocusedKeybindings,
@@ -15,10 +15,10 @@ import {
 	Keybinding,
 	useGlobalKeybindings,
 } from './hooks/useKeybindings.js';
-import {useStdoutDimensions} from './hooks/useStdoutDimensions.js';
-import {logger} from './logger.js';
-import {extractLabelsFromFile, find, Tools} from './tools.js';
-import {amountOfjsonEditsAtom} from './atoms/json-editor-atoms.js';
+import { useStdoutDimensions } from './hooks/useStdoutDimensions.js';
+import { logger } from './logger.js';
+import { extractLabelsFromFile, find, Tools } from './tools.js';
+import { amountOfjsonEditsAtom } from './atoms/json-editor-atoms.js';
 import DeltaLog from './components/delta-log.js';
 
 type Props = {
@@ -79,7 +79,7 @@ export default function App(props: Props) {
 	return <AppContent {...props} />;
 }
 
-function AppContent({tools, config}: Props) {
+function AppContent({ tools, config }: Props) {
 	const [allFiles, setAllFiles] = useState<Array<Item<FileInfo>>>([]);
 	const [allLabels, setAllLabels] = useState<Array<Item<LabelInfo>>>([]);
 
@@ -102,9 +102,9 @@ function AppContent({tools, config}: Props) {
 	const [amountOfJsonEdits] = useAtom(amountOfjsonEditsAtom);
 
 	const [cols, rows] = useStdoutDimensions();
-	const {focus, disableFocus} = useFocusManager();
+	const { focus, disableFocus } = useFocusManager();
 
-	const {showNotification, NotificationComponent} = useNotification();
+	const { showNotification, NotificationComponent } = useNotification();
 
 	useEffect(() => {
 		disableFocus();
@@ -112,7 +112,7 @@ function AppContent({tools, config}: Props) {
 	}, []);
 
 	useEffect(() => {
-		logger.info({config}, 'Starting application');
+		logger.info({ config }, 'Starting application');
 		const loadFilesAndLabels = async () => {
 			const fileItems: Array<Item<FileInfo>> = [];
 			const fileInfos = new Map<string, FileInfo>();
@@ -149,7 +149,7 @@ function AppContent({tools, config}: Props) {
 
 				if (error) {
 					logger.error(
-						{error, file: file.path},
+						{ error, file: file.path },
 						'Failed to extract labels from file',
 					);
 					showNotification({
@@ -161,7 +161,7 @@ function AppContent({tools, config}: Props) {
 				}
 
 				logger.debug(
-					{file: file.path, labelCount: labels.size},
+					{ file: file.path, labelCount: labels.size },
 					'Extracted labels from file',
 				);
 
@@ -407,7 +407,6 @@ function AppContent({tools, config}: Props) {
 
 			<Box height={1} width="100%" flexDirection="column" padding={1}>
 				<Text>
-					{activeGlobalKeybindings?.pretty()} |{' '}
 					{activeLocalKeybindings?.pretty()}
 				</Text>
 			</Box>
