@@ -74,7 +74,6 @@ interface Item<T> extends FilterItem {
 	item: T;
 }
 
-// Wrap the app with the ActiveKeybindingsProvider
 export default function App(props: Props) {
 	return <AppContent {...props} />;
 }

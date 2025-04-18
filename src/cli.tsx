@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
-import {render} from 'ink';
+import { render } from 'ink';
 import meow from 'meow';
-import {existsSync} from 'node:fs';
-import {clearScreenDown, cursorTo} from 'node:readline';
+import { existsSync } from 'node:fs';
+import { clearScreenDown, cursorTo } from 'node:readline';
 import App from './app.js';
-import {getConfig} from './config.js';
-import {getTools} from './tools.js';
+import { getConfig } from './config.js';
+import { getTools } from './tools.js';
 
 const cli = meow(
 	`
@@ -57,10 +57,10 @@ async function main() {
 	cursorTo(process.stdout, 0, 0);
 	clearScreenDown(process.stdout);
 
-	const {waitUntilExit} = render(
+	const { waitUntilExit } = render(
 		<App name={cli.flags.name} tools={tools} config={config} />,
 	);
-	waitUntilExit().then(() => console.log('Goodbye!'));
+	waitUntilExit().then(() => console.log('\nGoodbye!'));
 }
 
 main();
