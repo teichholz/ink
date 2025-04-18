@@ -9,7 +9,6 @@ import { basename } from 'path';
 import Scrollable from './scrollable.js';
 import { type FilterItem } from './filter.js';
 import { Key, useKeybindings } from '../hooks/useKeybindings.js';
-import chalk from 'chalk';
 
 export type DeltaDisplayMode = 'detailed' | 'file-changes';
 
@@ -67,24 +66,24 @@ export default function DeltaLog() {
 	// Setup keybindings
 	const keybindings = useMemo(() => [
 		{
-			key: Key.create('j'),
+			key: [Key.create('j'), Key.create('n', ['ctrl'])],
 			label: 'Move cursor down',
 			action: () => {
 				if (cursorIndex < adaptedEdits.length - 1) {
 					setCursorIndex(cursorIndex + 1);
 				}
 			},
-			showInHelp: true,
+			showInHelp: false,
 		},
 		{
-			key: Key.create('k'),
+			key: [Key.create('k'), Key.create('p', ['ctrl'])],
 			label: 'Move cursor up',
 			action: () => {
 				if (cursorIndex > 0) {
 					setCursorIndex(cursorIndex - 1);
 				}
 			},
-			showInHelp: true,
+			showInHelp: false,
 		},
 		{
 			key: Key.create('d'),

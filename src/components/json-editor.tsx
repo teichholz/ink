@@ -162,13 +162,13 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 	const keybindings = useMemo<Keybinding[]>(
 		() => [
 			{
-				key: Key.create('j'),
+				key: [Key.create('j'), Key.create('n', ['ctrl'])],
 				label: 'Move cursor down',
 				action: () => moveCursor(1),
 				showInHelp: false,
 			},
 			{
-				key: Key.create('k'),
+				key: [Key.create('k'), Key.create('p', ['ctrl'])],
 				label: 'Move cursor up',
 				action: () => moveCursor(-1),
 				showInHelp: false,
@@ -398,24 +398,21 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 						}
 						edit={focusedNode}
 						renderRange={[scrollOffset, scrollOffset + height]}
-						onStringInputSubmit={(newValue: string, path: string) => {
-							logger.info({ path }, 'Submitted string');
-
-							if (!focusedNode) {
+						onStringInputSubmit={(prevValue: string, newValue: string) => {
+							if (!focusedNode || !cursor.index) {
 								return;
 							}
 
 							if (isStringNode(focusedNode)) {
-								const originalValue = getJsonPointer(
-									originalJson,
-									path,
-								) as string;
+								const path = navigableNodes[cursor.index].path;
+
 								addStringChange({
 									path: path,
 									value: newValue,
-									originalValue: originalValue,
+									originalValue: prevValue,
 									filePath: filePath,
 								});
+
 								logger.info(
 									{ path, value: newValue, filePath },
 									'Saved string change',

@@ -67,17 +67,19 @@ export type SyntaxHighlightOptions = {
 	 */
 	renderRange?: [number, number];
 
+	indent?: number;
+
 	/**
 	 * Callback when a string node has changed
 	 *
 	 * @deprecated Use onStringInputSubmit instead
 	 */
-	onStringInputChange?: (node: JsonNode, value: string, path: string) => void;
+	onStringInputChange?: (node: JsonNode, value: string) => void;
 
 	/**
 	 * Callback when a string node is submitted
 	 */
-	onStringInputSubmit?: (value: string, path: string) => void;
+	onStringInputSubmit?: (prev: string, value: string) => void;
 };
 
 /**
@@ -86,6 +88,7 @@ export type SyntaxHighlightOptions = {
 export function SyntaxHighlighter({
 	node,
 	syntax = DefaultHighlighting,
+	indent = 2,
 	cursor = null,
 	edit = null,
 	renderRange = [0, Infinity],
@@ -95,6 +98,7 @@ export function SyntaxHighlighter({
 	const result = applyHighlighting(0, {
 		node,
 		syntax,
+		indent,
 		cursor,
 		edit,
 		renderRange,
@@ -109,7 +113,7 @@ function applyHighlighting(
 	depth: number,
 	{
 		node,
-		path = '',
+		indent: iindent,
 		syntax,
 		cursor,
 		edit,
@@ -118,13 +122,9 @@ function applyHighlighting(
 		onStringInputSubmit,
 	}: Required<SyntaxHighlightOptions> & { path?: string },
 ): ReactNode {
-	const indent = '  '.repeat(depth);
+	const indent = ' '.repeat(depth * iindent);
 	const applyCursorHighlight = (element: ReactNode, node: JsonNode) => {
-		if (
-			cursor &&
-			node.range[0] === cursor.range[0] &&
-			node.range[1] === cursor.range[1]
-		) {
+		if (node === cursor) {
 			return syntax.CURSORHIGHLIGHT(element);
 		}
 		return element;
@@ -136,6 +136,7 @@ function applyHighlighting(
 	// options that are static for the entire tree
 	const staticOpts = {
 		syntax,
+		indent: iindent,
 		cursor,
 		edit,
 		renderRange,
@@ -159,22 +160,13 @@ function applyHighlighting(
 
 		// Only show braces if any part of the object is in range
 		const shouldShowBraces = objectInRange && propsInRenderRange.some(Boolean);
-		const firstPropInRenderRange = shouldShowBraces;
-		const lastPropInRenderRange = shouldShowBraces;
 
 		const properties = node.properties.map(prop => {
-			const propInRange = inRenderRange(prop.key) || inRenderRange(prop.value);
 			const key = applyCursorHighlight(syntax.PROPERTY(prop.key.raw), prop.key);
-			const propPath = `${path}/${prop.key.value}`;
 			const value = applyHighlighting(depth + 1, {
 				node: prop.value,
-				path: propPath,
 				...staticOpts,
 			});
-
-			if (!propInRange) {
-				return <Text></Text>;
-			}
 
 			return (
 				<React.Fragment key={prop.key.value}>
@@ -186,12 +178,12 @@ function applyHighlighting(
 			);
 		});
 
-		const openBrace = firstPropInRenderRange ? (
+		const openBrace = shouldShowBraces ? (
 			syntax.OBJECT('{\n')
 		) : (
 			<Text></Text>
 		);
-		const closeBrace = lastPropInRenderRange ? (
+		const closeBrace = shouldShowBraces ? (
 			<>
 				<Text>{indent}</Text>
 				{syntax.OBJECT('}')}
@@ -238,17 +230,11 @@ function applyHighlighting(
 		// Only show brackets if any part of the array is in range
 		const shouldShowBrackets = arrayInRange && elementsInRenderRange.some(Boolean);
 
-		const elements = node.elements.map((elem, index) => {
-			const elemPath = `${path}/${index}`;
+		const elements = node.elements.map((elem) => {
 			const value = applyHighlighting(depth + 1, {
 				node: elem,
-				path: elemPath,
 				...staticOpts,
 			});
-
-			if (!inRenderRange(elem)) {
-				return <Text></Text>;
-			}
 
 			return (
 				<React.Fragment>
@@ -283,7 +269,6 @@ function applyHighlighting(
 		);
 	}
 
-	// For primitive nodes, always traverse but conditionally render
 	if (!inRenderRange(node)) {
 		return <Text></Text>;
 	}
@@ -293,7 +278,7 @@ function applyHighlighting(
 			syntax.STRING({
 				initialValue: node.value,
 				focus: edit === node,
-				onSubmit: value => onStringInputSubmit(value, path),
+				onSubmit: (str) => onStringInputSubmit(node.value, str),
 			}),
 			node,
 		);

@@ -76,7 +76,7 @@ export type Keybinding = {
 	/**
 	 * The key or key combination to bind
 	 */
-	key: KeyCombo;
+	key: KeyCombo | KeyCombo[];
 
 	/**
 	 * Human-readable label describing what this keybinding does
@@ -150,25 +150,31 @@ export function useKeybindings(
 				continue;
 			}
 
-			const { mainKey: letterKey, modifiers } = normalizeKeyBinding(binding.key);
+			const keyArray = Array.isArray(binding.key)
+				? binding.key
+				: [binding.key];
 
-			const modifiersMatch = modifiers.every(modifier => key[modifier]);
-			if (!modifiersMatch) {
-				continue;
-			}
+			for (const bindingKey of keyArray) {
+				const { mainKey: letterKey, modifiers } = normalizeKeyBinding(bindingKey);
 
-			// if the binding has no letter, execute it now
-			if (!letterKey) {
+				const modifiersMatch = modifiers.every(modifier => key[modifier]);
+				if (!modifiersMatch) {
+					continue;
+				}
+
+				// if the binding has no letter, execute it now
+				if (!letterKey) {
+					binding.action();
+					continue;
+				}
+
+				const letterKeyMatches = input === letterKey;
+				if (!letterKeyMatches) {
+					continue;
+				}
+
 				binding.action();
-				continue;
 			}
-
-			const letterKeyMatches = input === letterKey;
-			if (!letterKeyMatches) {
-				continue;
-			}
-
-			binding.action();
 		}
 	});
 
@@ -182,8 +188,8 @@ export function useKeybindings(
 			.join('  ');
 	}, [keybindings, formatKeyBinding]);
 
-	const [_1, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
-	const [_2, setActiveKeybindingsGlobal] = useAtom(globalKeybindings);
+	const [, setActiveKeybindings] = useAtom(currentFocusedKeybindings);
+	const [, setActiveKeybindingsGlobal] = useAtom(globalKeybindings);
 
 	if (local) {
 		useEffect(() => {
@@ -225,7 +231,9 @@ function normalizeKeyBinding(keyBinding: KeyCombo): {
  * Format a key binding for display
  */
 export function formatKeyBinding(keybinding: Keybinding): string {
-	const { mainKey, modifiers } = normalizeKeyBinding(keybinding.key);
+	const bindingKey = Array.isArray(keybinding.key) ? keybinding.key[0] : keybinding.key;
+
+	const { mainKey, modifiers } = normalizeKeyBinding(bindingKey);
 
 	const formattedModifiers = modifiers.map(mod => {
 		switch (mod) {
