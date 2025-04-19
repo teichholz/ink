@@ -156,30 +156,37 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 		});
 	}, [navigableNodes]);
 
+	const isEditing = focusedNode !== null;
+	const isNotEditing = !isEditing;
+
 	const keybindings = useMemo<Keybinding[]>(
 		() => [
 			{
 				key: [Key.create('j'), Key.create('n', ['ctrl'])],
 				label: 'Move cursor down',
 				action: () => moveCursor(1),
+				predicate: () => isNotEditing,
 				showInHelp: false,
 			},
 			{
 				key: [Key.create('k'), Key.create('p', ['ctrl'])],
 				label: 'Move cursor up',
 				action: () => moveCursor(-1),
+				predicate: () => isNotEditing,
 				showInHelp: false,
 			},
 			{
 				key: Key.create('d', ['ctrl']),
 				showInHelp: false,
 				action: () => moveCursor(5),
+				predicate: () => isNotEditing,
 				label: 'Jump down',
 			},
 			{
 				key: Key.create('u', ['ctrl']),
 				showInHelp: false,
 				action: () => moveCursor(-5),
+				predicate: () => isNotEditing,
 				label: 'Jump up',
 			},
 			{
@@ -201,11 +208,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 					}
 				},
 				predicate: () => {
-					if (!cursor.node) {
-						return false;
-					}
-
-					if (search.doSearch) {
+					if (!cursor.node || search.doSearch) {
 						return false;
 					}
 
@@ -222,7 +225,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 			{
 				key: Key.create('/'),
 				label: 'Search',
-				predicate: () => !search.doSearch,
+				predicate: () => !search.doSearch && isNotEditing,
 				action: () => {
 					setSearch(prev => {
 						return {
@@ -273,7 +276,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 				},
 			}
 		],
-		[cursor, navigableNodes, search],
+		[cursor, navigableNodes, search, isEditing],
 	);
 
 	function moveCursor(lines: number) {
@@ -397,6 +400,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 						renderRange={[scrollOffset, scrollOffset + height]}
 						onStringInputSubmit={(prevValue: string, newValue: string) => {
 							if (!focusedNode || !cursor.index) {
+								setFocusedNode(null);
 								return;
 							}
 
