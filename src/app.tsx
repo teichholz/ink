@@ -96,6 +96,9 @@ function AppContent({ tools, config }: Props) {
 	const [selectedLabel, setSelectedLabel] = useState<LabelInfo | null>(null);
 	const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
 
+	// Track full-height view mode (null = normal view, 'editor' or 'log' = full-height view of that component)
+	const [fullHeightComponent, setFullHeightComponent] = useState<'editor' | 'log' | null>(null);
+
 	const [activeLocalKeybindings] = useAtom(currentFocusedKeybindings);
 	const [activeGlobalKeybindings] = useAtom(globalKeybindings);
 	const [amountOfJsonEdits] = useAtom(amountOfjsonEditsAtom);
@@ -283,8 +286,24 @@ function AppContent({ tools, config }: Props) {
 					return amountOfJsonEdits > 0;
 				},
 			},
+			{
+				key: Key.create(']'),
+				label: 'Toggle full-height view',
+				action: () => {
+					logger.info('Toggling full-height view');
+					setFullHeightComponent(
+						fullHeightComponent === null
+							? hasFocus === 'delta-log'
+								? 'log'
+								: 'editor'
+							: null
+					);
+					focus(hasFocus);
+				},
+				showInHelp: true,
+			},
 		],
-		[hasFocus, amountOfJsonEdits],
+		[hasFocus, amountOfJsonEdits, fullHeightComponent],
 	);
 
 	// Use keybindings hook for app-level navigation
@@ -346,6 +365,26 @@ function AppContent({ tools, config }: Props) {
 		setIsFileFilterActive(isActive);
 	};
 
+	const Editor = (
+		selectedLabel ? (
+			<LabelPreview label={selectedLabel} />
+		) : selectedFile ? (
+			<JsonEditor
+				id="json-editor"
+				filePath={Array.from(selectedFile.paths)[0]}
+				onExit={() => {
+					focus(hasFocus);
+				}}
+			/>
+		) : (
+			<FilePreview file={selectedFile} />
+		)
+	);
+
+	const Log = (
+		<DeltaLog id="delta-log" />
+	);
+
 	return (
 		<Box height={rows} width={cols} flexDirection="column">
 			<Box height={rows - 1} width="100%" flexDirection="row">
@@ -364,6 +403,7 @@ function AppContent({ tools, config }: Props) {
 						}}
 						onSelect={_ => {
 							logger.info('Entering edit mode filter 1');
+							setHasFocus('json-editor');
 							focus('json-editor');
 						}}
 					/>
@@ -378,29 +418,30 @@ function AppContent({ tools, config }: Props) {
 						}}
 						onSelect={_ => {
 							logger.info('Entering edit mode filter 2');
+							setHasFocus('json-editor');
 							focus('json-editor');
 						}}
 					/>
 				</Box>
 				<Box height="100%" width="75%" flexDirection="column">
-					<Box height="75%" width="100%">
-						{selectedLabel ? (
-							<LabelPreview label={selectedLabel} />
-						) : selectedFile ? (
-							<JsonEditor
-								id="json-editor"
-								filePath={Array.from(selectedFile.paths)[0]}
-								onExit={() => {
-									focus(hasFocus);
-								}}
-							/>
-						) : (
-							<FilePreview file={selectedFile} />
-						)}
-					</Box>
-					<Box height="25%" width="100%">
-						<DeltaLog />
-					</Box>
+					{fullHeightComponent === 'editor' ? (
+						<Box height="100%" width="100%">
+							{Editor}
+						</Box>
+					) : fullHeightComponent === 'log' ? (
+						<Box height="100%" width="100%">
+							{Log}
+						</Box>
+					) : (
+						<>
+							<Box height="75%" width="100%">
+								{Editor}
+							</Box>
+							<Box height="25%" width="100%">
+								{Log}
+							</Box>
+						</>
+					)}
 				</Box>
 			</Box>
 

@@ -9,6 +9,7 @@ import { basename } from 'path';
 import Scrollable from './scrollable.js';
 import { type FilterItem } from './filter.js';
 import { Key, useKeybindings } from '../hooks/useKeybindings.js';
+import { logger } from '../logger.js';
 
 export type DeltaDisplayMode = 'detailed' | 'file-changes';
 
@@ -19,7 +20,7 @@ type DeltaItemAdapter = FilterItem & {
 	diff: Change[];
 };
 
-export default function DeltaLog() {
+export default function DeltaLog({ id }: { id: string }) {
 	const edits = useAtomValue(jsonEditAtom);
 	const [, removeEdit] = useAtom(removeJsonEditAtom);
 	const [diffs, setDiffs] = useState<Map<number, Change[]>>(new Map());
@@ -69,6 +70,7 @@ export default function DeltaLog() {
 			key: [Key.create('j'), Key.create('n', ['ctrl'])],
 			label: 'Move cursor down',
 			action: () => {
+				logger.info('Move cursor down');
 				if (cursorIndex < adaptedEdits.length - 1) {
 					setCursorIndex(cursorIndex + 1);
 				}
@@ -79,6 +81,7 @@ export default function DeltaLog() {
 			key: [Key.create('k'), Key.create('p', ['ctrl'])],
 			label: 'Move cursor up',
 			action: () => {
+				logger.info('Move cursor up');
 				if (cursorIndex > 0) {
 					setCursorIndex(cursorIndex - 1);
 				}
@@ -115,7 +118,7 @@ export default function DeltaLog() {
 		}
 	], [cursorIndex, adaptedEdits, edits, removeEdit]);
 
-	useKeybindings(keybindings, 'delta-log');
+	useKeybindings(keybindings, id);
 
 	const DeltaItemComponent = ({ item, selected }: { item: DeltaItemAdapter; selected: boolean }) => (
 		<DeltaItem
@@ -141,7 +144,7 @@ export default function DeltaLog() {
 				</Box>
 			) : (
 				<Scrollable
-					id="delta-log"
+					id={id}
 					key={displayMode}
 					items={adaptedEdits}
 					selectedIndex={cursorIndex}
