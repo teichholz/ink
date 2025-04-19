@@ -46,6 +46,7 @@ type JsonEditorProps = {
 type JsonCursor = {
 	path: string;
 	index?: number;
+	prevIndex?: number;
 	node?: JsonNode;
 };
 
@@ -283,7 +284,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 		setCursor(prev => {
 			const next = MathUtils.mod((prev.index ?? 0) + lines, navigableNodes.length);
 			const nextNode = navigableNodes[next];
-			return { index: next, node: nextNode.node, path: nextNode.path };
+			return { index: next, prevIndex: prev.index, node: nextNode.node, path: nextNode.path };
 		});
 	}
 
@@ -333,15 +334,14 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 	useEffect(() => {
 		if (!cursor.node || !height) return;
 
-
 		const cursorLine = cursor.node?.loc?.start.line || 0;
 
 		if (cursorLine < scrollOffset) {
 			setScrollOffset(cursorLine);
 			logger.info({ height, cursorLine, scrollOffset: cursorLine }, 'Calculated scroll offset');
 		} else if (cursorLine >= scrollOffset + height) {
-			setScrollOffset(cursorLine - height + 1);
-			logger.info({ height, cursorLine, scrollOffset: cursorLine - height + 1 }, 'Calculated scroll offset');
+			setScrollOffset(cursorLine - height);
+			logger.info({ height, cursorLine, scrollOffset: cursorLine - height }, 'Calculated scroll offset');
 		}
 	}, [cursor, height]);
 
