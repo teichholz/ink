@@ -1,6 +1,7 @@
 import { dirname } from "node:path";
 import { findUp } from "find-up";
-import { Result } from "./types.js";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 
 export type Config = {
 	/**
@@ -54,7 +55,7 @@ export async function getConfig(): Promise<Result<Config, Error>> {
 	const configPath = await findUp("int.mjs");
 
 	if (!configPath) {
-		return Result.err(Error("Could not find int.mjs configuration file"));
+		return err(Error("Could not find int.mjs configuration file"));
 	}
 
 	const configModule = await import(configPath);
@@ -62,5 +63,5 @@ export async function getConfig(): Promise<Result<Config, Error>> {
 	config.rootDir = dirname(configPath);
 	config.jsonIndent = config.jsonIndent ?? 2;
 
-	return Result.ok(config);
+	return ok(config);
 }

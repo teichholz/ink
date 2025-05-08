@@ -1,6 +1,7 @@
 import { compile } from "jsonpointer";
+import type { Result } from "neverthrow";
+import { ok } from "neverthrow";
 import { logger } from "./logger.js";
-import { Result } from "./types.js";
 
 export type JSONValue =
 	| string
@@ -39,15 +40,15 @@ export function getJsonPointer(
  */
 export function modifyJsonPointer<T extends JSONValue>(
 	json: T,
-	update: any,
+	update: unknown,
 	pointer: string,
 ): Result<T, Error> {
 	if (!pointer || pointer === "") {
-		return Result.ok(update as T);
+		return ok(update as T);
 	}
 
 	const { set } = compile(pointer);
-	set(json as any, update);
+	set(json as object, update);
 
-	return Result.ok(json);
+	return ok(json);
 }

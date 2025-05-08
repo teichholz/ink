@@ -31,26 +31,31 @@ const cli = meow(
 );
 
 async function main() {
-	const [config, error] = await getConfig();
+	const config = await getConfig();
 
-	if (error) {
+	if (config.isErr()) {
+		const error = config.error;
 		console.error(chalk.red(`Could not read config: ${error.message}`));
 		process.exit(1);
 	}
 
-	if (!existsSync(config.rootDir)) {
+	const configValue = config.value;
+
+	if (!existsSync(configValue.rootDir)) {
 		console.error(
 			chalk.red(
-				`Could not find ${config.rootDir} from where to search recursively`,
+				`Could not find ${configValue.rootDir} from where to search recursively`,
 			),
 		);
-		return;
+
+		process.exit(1);
 	}
 
-	const [tools, toolsError] = await getTools();
+	const tools = await getTools();
 
-	if (toolsError) {
-		console.error(chalk.red(`Could not find tools: ${toolsError.message}`));
+	if (tools.isErr()) {
+		const error = tools.error;
+		console.error(chalk.red(`Could not find tools: ${error.message}`));
 		process.exit(1);
 	}
 
@@ -58,7 +63,7 @@ async function main() {
 	clearScreenDown(process.stdout);
 
 	const { waitUntilExit } = render(
-		<App name={cli.flags.name} tools={tools} config={config} />,
+		<App name={cli.flags.name} tools={tools.value} config={configValue} />,
 	);
 	waitUntilExit().then(() => console.log('\nGoodbye!'));
 }

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { rgPath as installedRgPath } from "@vscode/ripgrep";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 import {
 	type Channel,
 	type ExecResult,
@@ -11,7 +13,6 @@ import type { Config } from "./config.js";
 import { getJsonPointer } from "./jsonpath.js";
 import { logger } from "./logger.js";
 import { findPathTools } from "./os.js";
-import { Result } from "./types.js";
 
 export interface Tools {
 	rg: string;
@@ -22,10 +23,10 @@ export async function getTools(): Promise<Result<Tools, Error>> {
 	const { findPath, fdPath, rgPath } = await findPathTools();
 
 	if (!findPath || !fdPath) {
-		return Result.err(new Error("Could not find find or fd executables"));
+		return err(new Error("Could not find find or fd executables"));
 	}
 
-	return Result.ok({ rg: rgPath || installedRgPath, fd: fdPath || findPath });
+	return ok({ rg: rgPath || installedRgPath, fd: fdPath || findPath });
 }
 
 class Labels extends Map<string, unknown> {
@@ -57,7 +58,7 @@ export async function extractLabelsFromFile(
 		logger.debug(`Extracted labels: ${JSON.stringify(root)}`);
 
 		if (!root) {
-			return Result.err(
+			return err(
 				new Error("Invalid json path: Path must point to a single object"),
 			);
 		}
@@ -70,9 +71,9 @@ export async function extractLabelsFromFile(
 			m.set(key, value);
 		}
 
-		return Result.ok(m);
+		return ok(m);
 	} catch (error) {
-		return Result.err(error as Error);
+		return err(error as Error);
 	}
 }
 

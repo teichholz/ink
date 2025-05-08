@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { modifyJsonPointer } from "./jsonpath.js";
-import { Result } from "./types.js";
 
 describe("modifyJsonPath", () => {
 	// Test simple string replacement
@@ -8,7 +7,8 @@ describe("modifyJsonPath", () => {
 		const json = "hello world";
 		const result = modifyJsonPointer(json, "goodbye world", "");
 
-		expect(Result.unwrap(result)).toBe("goodbye world");
+		expect(result.isOk()).toBe(true);
+		expect(result._unsafeUnwrap()).toBe("goodbye world");
 	});
 
 	// Test object property modification
@@ -16,7 +16,8 @@ describe("modifyJsonPath", () => {
 		const json = { name: "John", age: 30 };
 		const result = modifyJsonPointer(json, "Jane", "/name");
 
-		expect(Result.unwrap(result)).toEqual({ name: "Jane", age: 30 });
+		expect(result.isOk()).toBe(true);
+		expect(result._unsafeUnwrap()).toEqual({ name: "Jane", age: 30 });
 	});
 
 	// Test nested object property modification
@@ -31,8 +32,8 @@ describe("modifyJsonPath", () => {
 		};
 		const result = modifyJsonPointer(json, "Boston", "/person/address/city");
 
-		expect(Result.isOk(result)).toBe(true);
-		const unwrapped = Result.unwrap(result) as any;
+		expect(result.isOk()).toBe(true);
+		const unwrapped = result._unsafeUnwrap() as any;
 		expect(unwrapped.person.address.city).toBe("Boston");
 	});
 
@@ -41,7 +42,7 @@ describe("modifyJsonPath", () => {
 		const json = ["apple", "banana", "cherry"];
 		const result = modifyJsonPointer(json, "orange", "/1");
 
-		expect(Result.isOk(result)).toBe(true);
-		expect(Result.unwrap(result)).toEqual(["apple", "orange", "cherry"]);
+		expect(result.isOk()).toBe(true);
+		expect(result._unsafeUnwrap()).toEqual(["apple", "orange", "cherry"]);
 	});
 });

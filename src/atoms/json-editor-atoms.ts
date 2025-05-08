@@ -73,12 +73,12 @@ export const removeJsonEditAtom = atom(
 		set(jsonEditAtom, filteredChanges);
 
 		// Remove the edit from the JsonNode
-		const { path, value } = editToRemove;
+		const { path, originalValue } = editToRemove;
 		const jsonNode = defaultStore.get(jsonTreesAtom).get(path)?.cached;
 
 		if (jsonNode) {
 			try {
-				const newNode = updateJsonNode(jsonNode, path, value);
+				const newNode = updateJsonNode(jsonNode, path, originalValue);
 				defaultStore.get(jsonTreesAtom).set(path, { cached: newNode });
 			} catch (error) {
 				logger.error({ error }, "Error updating JSON node");

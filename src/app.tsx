@@ -144,23 +144,24 @@ function AppContent({ tools, config }: Props) {
 				}
 
 				// Extract labels from the file
-				const [labels, error] = await extractLabelsFromFile(
+				const result = await extractLabelsFromFile(
 					file,
 					config.jsonPath,
 				);
 
-				if (error) {
+				if (result.isErr()) {
 					logger.error(
-						{ error, file: file.path },
+						{ error: result.error, file: file.path },
 						'Failed to extract labels from file',
 					);
 					showNotification({
 						title: 'Error',
-						message: error.message,
+						message: result.error.message,
 					});
-
 					continue;
 				}
+
+				const labels = result.value;
 
 				logger.debug(
 					{ file: file.path, labelCount: labels.size },
@@ -180,7 +181,6 @@ function AppContent({ tools, config }: Props) {
 						};
 						labelInfoMap.set(key, labelInfo);
 					}
-
 					labelInfo.languages.add(file.language);
 					labelInfo.sources.add(file.path);
 					labelInfo.values.set(file.path, value);
@@ -371,7 +371,7 @@ function AppContent({ tools, config }: Props) {
 		) : selectedFile ? (
 			<JsonEditor
 				id="json-editor"
-				filePath={Array.from(selectedFile.paths)[0]}
+				path={{ type: "FileInfo", info: selectedFile }}
 				onExit={() => {
 					focus(hasFocus);
 				}}

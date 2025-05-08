@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Config } from "./config.js";
 import { extractLabelsFromFile, find } from "./tools.js";
-import { Result } from "./types.js";
 
 describe("Tools", () => {
 	describe("find function", () => {
@@ -131,9 +130,9 @@ describe("Tools", () => {
 				rootFileName: "messages",
 			};
 
-			const labels = Result.unwrap(
-				await extractLabelsFromFile(mockFile, "$.labels.%lang"),
-			);
+			const result = await extractLabelsFromFile(mockFile, "$.labels.%lang");
+			expect(result.isOk()).toBe(true);
+			const labels = result._unsafeUnwrap();
 
 			// Check that the result is a Map
 			expect(labels).toBeInstanceOf(Map);
@@ -156,9 +155,9 @@ describe("Tools", () => {
 				rootFileName: "empty",
 			};
 
-			const labels = Result.unwrap(
-				await extractLabelsFromFile(mockFile, "$.labels.%lang"),
-			);
+			const result = await extractLabelsFromFile(mockFile, "$.labels.%lang");
+			expect(result.isOk()).toBe(true);
+			const labels = result._unsafeUnwrap();
 
 			// Check that the result is an empty Map
 			expect(labels).toBeInstanceOf(Map);

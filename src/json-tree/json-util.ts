@@ -44,6 +44,7 @@ export function getNavigableNodes(
 		for (const prop of node.properties) {
 			const propPath = `${path}/${prop.key.value}`;
 			if (!isPrimitive(prop.value)) {
+				result.push({ node: prop, path: propPath, parent: node });
 				result.push(...getNavigableNodes(prop.value, propPath, node));
 			} else {
 				result.push({ node: prop, path: propPath, parent: node });

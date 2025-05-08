@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 import { Box, Text, useFocusManager, useInput } from 'ink';
 import { useAtom } from 'jotai';
 import { useEffect, useMemo, useState } from 'react';
-import { addJsonEditAtom } from '../atoms/json-editor-atoms.js';
+import { addJsonEditAtom, jsonTreesAtom, addJsonTreeAtom } from '../atoms/json-editor-atoms.js';
 import { useComponentHeight } from '../hooks/useComponentHeight.js';
 import { Key, Keybinding, useKeybindings } from '../hooks/useKeybindings.js';
 import {
@@ -25,6 +25,7 @@ import TextInput from './input.js';
 import { SyntaxHighlighter } from './syntax-highlighter.js';
 import { useNotification } from './notification.js';
 import { MathUtils } from '../math.js';
+import { FileInfo, LabelInfo } from '../app.js';
 
 type JsonEditorProps = {
 	/**
@@ -32,10 +33,11 @@ type JsonEditorProps = {
 	 */
 
 	id: string;
+
 	/**
 	 * Path to the JSON file to edit
 	 */
-	filePath: string | null;
+	path: { type: "FileInfo"; info: FileInfo } | { type: "LabelInfo"; info: LabelInfo };
 
 	/**
 	 * Callback when exiting the editor
@@ -55,8 +57,8 @@ type Search = {
 	doSearch: boolean;
 };
 
-export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
-	const [jsonTree, setJsonTree] = useState<JsonValueNode | null>(null);
+export function JsonEditor({ id, path, onExit }: JsonEditorProps) {
+	const [jsonTree, setJsonTree] = useState<JsonNode | null>(null);
 	const [focusedNode, setFocusedNode] = useState<JsonNode | null>(null);
 	const [navigableNodes, setNavigableNodes] = useState<NavigableNode[]>([]);
 	const [error, setError] = useState<Error | null>(null);
@@ -76,44 +78,13 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 	const [debug, setDebug] = useState(false);
 	const { showNotification } = useNotification();
 
+	const filePath = Array.from(path.type === 'FileInfo' ? path.info.paths : path.info.sources)[0];
+	const [jsonTrees] = useAtom(jsonTreesAtom);
+	const [, addJsonTree] = useAtom(addJsonTreeAtom);
+
 	useEffect(() => {
-		const loadFile = async () => {
-			if (!filePath) {
-				setJsonTree(null);
-				setError(null);
-				return;
-			}
-
-			const [parsed, err] = await parseJsonFile(filePath);
-
-			if (err) {
-				logger.error({ error: err }, 'Error parsing JSON file');
-				setError(err);
-				setJsonTree(null);
-				return;
-			}
-
-			const [parsedJson] = parsed;
-
-			// Format the JSON without syntax highlighting
-			const formattedContent = stringify(parsedJson);
-
-			// Reparse since stringify changed the formatting and we need the correct locations
-			const [json, err2] = parseJson(formattedContent);
-
-			if (err2) {
-				logger.error(
-					{ error: err2, content: formattedContent },
-					'Error parsing stringified JSON',
-				);
-				setError(err2);
-				setJsonTree(null);
-				return;
-			}
-
-			logger.info('Set highlighted content due to file path change');
-
-			setJsonTree(json as JsonValueNode);
+		const setTree = (json: JsonNode) => {
+			setJsonTree(json);
 			const navigable = getNavigableNodes(json);
 			setNavigableNodes(navigable);
 			setCursor({ path: navigable[0]?.path || '/', index: 0, node: navigable[0]?.node });
@@ -121,8 +92,54 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 			setError(null);
 		};
 
+		const loadFile = async () => {
+			// Check if the file is already cached in jsonTreesAtom
+			const cachedTree = jsonTrees.get(filePath);
+
+			if (cachedTree) {
+				logger.info({ filePath }, 'Using cached JSON tree');
+				const json = cachedTree.cached;
+
+				setTree(json as JsonValueNode);
+				return;
+			}
+
+			// Not cached, parse the file
+			const result = await parseJsonFile(filePath);
+
+			if (result.isErr()) {
+				logger.error({ error: result.error }, 'Error parsing JSON file');
+				setError(result.error);
+				setJsonTree(null);
+				return;
+			}
+
+			const [parsedJson] = result.value;
+			// Format the JSON without syntax highlighting
+			const formattedContent = stringify(parsedJson);
+			// Reparse since stringify changed the formatting and we need the correct locations
+			const parsedAgain = parseJson(formattedContent);
+
+			if (parsedAgain.isErr()) {
+				logger.error(
+					{ error: parsedAgain.error, content: formattedContent },
+					'Error parsing stringified JSON',
+				);
+				setError(parsedAgain.error);
+				setJsonTree(null);
+				return;
+			}
+
+			logger.info('Set highlighted content due to file path change');
+
+			// Cache the parsed JSON tree
+			addJsonTree({ path: filePath, cached: parsedAgain.value as JsonNode });
+
+			setTree(parsedAgain.value as JsonValueNode);
+		};
+
 		loadFile();
-	}, [filePath]);
+	}, [filePath, jsonTrees, addJsonTreeAtom]);
 
 	/**
 	 * Fuse.js instance for fuzzy search
@@ -354,7 +371,7 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 		);
 	}
 
-	if (!filePath) {
+	if (!path) {
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Text>No file selected</Text>
@@ -379,6 +396,10 @@ export function JsonEditor({ id, filePath, onExit }: JsonEditorProps) {
 			padding={0}
 			overflow="hidden"
 		>
+			{path.type === 'FileInfo' &&
+				<Box>
+					<Text>File Info Content</Text>
+				</Box>}
 			{cursor.path && <Text color="gray">Current path: {cursor.path}</Text>}
 			<Box
 				height="100%"

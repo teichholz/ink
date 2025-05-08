@@ -17,15 +17,18 @@ export async function applyEdit(
 			await readFile(edit.filePath, { encoding: "utf-8" }),
 		);
 
-		const [updated, err] = modifyJsonPointer(json, edit.value, edit.path);
+		const result = modifyJsonPointer(json, edit.value, edit.path);
 
-		if (err) {
-			return err;
+		if (result.isErr()) {
+			return result.error;
 		}
 
-		await writeFile(edit.filePath, JSON.stringify(updated, null, jsonIndent));
+		await writeFile(
+			edit.filePath,
+			JSON.stringify(result.value, null, jsonIndent),
+		);
 
-		return updated;
+		return null;
 	} catch (err) {
 		return err as Error;
 	}
